@@ -72,7 +72,37 @@ const SheetsSync = {
     localStorage.removeItem(SHEETS_LS.tokenExpiresAt);
   },
 
+  getRedirectUri() {
+    return window.location.origin + window.location.pathname;
+  },
+
+  // Google's popup-based token flow (window.open + postMessage terug naar de opener)
+  // is onbetrouwbaar op iOS Safari: de popup opent soms als volledige navigatie zonder
+  // opener-koppeling, waardoor de handshake nooit teruggeeft en Safari terugvalt op de
+  // vorige pagina (het "witte scherm dat crasht"-effect). Een volledige-pagina-redirect
+  // werkt overal hetzelfde, dus dat gebruiken we in plaats van een popup.
+  handleRedirectResult() {
+    const hash = window.location.hash;
+    if (!hash || hash.length < 2) return false;
+    const params = new URLSearchParams(hash.slice(1));
+    if (!params.has('access_token') && !params.has('error')) return false;
+
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+
+    if (params.has('error')) {
+      this.setStatus('error', params.get('error'));
+      return true;
+    }
+    const token = params.get('access_token');
+    const expiresIn = parseInt(params.get('expires_in'), 10) || 3600;
+    this.accessToken = token;
+    this.saveToken(token, expiresIn);
+    return true;
+  },
+
   init(retriesLeft = 20) {
+    const gotRedirectToken = this.handleRedirectResult();
+
     if (!this.isConfigured()) {
       this.setStatus('not_configured');
       return;
@@ -88,24 +118,23 @@ const SheetsSync = {
     this.tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: this.getClientId(),
       scope: SCOPES,
-      callback: (resp) => {
-        if (resp.error) {
-          this.setStatus('error', resp.error);
-          return;
-        }
-        this.accessToken = resp.access_token;
-        this.saveToken(resp.access_token, resp.expires_in);
-        this.setStatus('connected');
-        this.afterConnect();
-      },
+      ux_mode: 'redirect',
+      redirect_uri: this.getRedirectUri(),
+      callback: () => {},
     });
+
+    if (gotRedirectToken && this.accessToken) {
+      this.setStatus('connected');
+      this.afterConnect();
+      return;
+    }
 
     const cached = this.loadValidToken();
     if (cached) {
       this.accessToken = cached;
       this.setStatus('connected');
       this.afterConnect();
-    } else {
+    } else if (this.status !== 'error') {
       this.setStatus('idle');
     }
   },
