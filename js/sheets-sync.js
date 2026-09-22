@@ -20,7 +20,6 @@ const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googlea
 const DEFAULT_CLIENT_ID = '113516803135-1flcjf29keeho4he8o66mjp8bsafjbr7.apps.googleusercontent.com';
 
 const SheetsSync = {
-  tokenClient: null,
   accessToken: null,
   status: 'idle', // idle | connecting | connected | error | not_configured
   listeners: [],
@@ -76,11 +75,26 @@ const SheetsSync = {
     return window.location.origin + window.location.pathname;
   },
 
-  // Google's popup-based token flow (window.open + postMessage terug naar de opener)
-  // is onbetrouwbaar op iOS Safari: de popup opent soms als volledige navigatie zonder
-  // opener-koppeling, waardoor de handshake nooit teruggeeft en Safari terugvalt op de
-  // vorige pagina (het "witte scherm dat crasht"-effect). Een volledige-pagina-redirect
-  // werkt overal hetzelfde, dus dat gebruiken we in plaats van een popup.
+  // Google's eigen JS-library (initTokenClient) opent altijd een POPUP, ook als je
+  // ux_mode:'redirect' meegeeft — die optie werkt alleen bij de losse initCodeClient-API,
+  // die weer een backend nodig heeft om de code veilig te wisselen (die hebben we niet).
+  // Popups zijn onbetrouwbaar op iOS Safari (de popup opent soms als kale navigatie zonder
+  // koppeling terug naar de opener, dus de handshake mislukt en Safari valt terug op de
+  // vorige pagina — het "wit scherm dat crasht"-effect). Daarom bouwen we de OAuth-redirect
+  // hier zelf op met een kale URL en window.location, buiten Google's library om: dat is
+  // altijd een gewone paginanavigatie, op elk platform.
+  buildAuthUrl() {
+    const params = new URLSearchParams({
+      client_id: this.getClientId(),
+      redirect_uri: this.getRedirectUri(),
+      response_type: 'token',
+      scope: SCOPES,
+      include_granted_scopes: 'true',
+      prompt: this.accessToken ? '' : 'consent',
+    });
+    return 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
+  },
+
   handleRedirectResult() {
     const hash = window.location.hash;
     if (!hash || hash.length < 2) return false;
@@ -100,28 +114,13 @@ const SheetsSync = {
     return true;
   },
 
-  init(retriesLeft = 20) {
+  init() {
     const gotRedirectToken = this.handleRedirectResult();
 
     if (!this.isConfigured()) {
       this.setStatus('not_configured');
       return;
     }
-    if (!window.google || !window.google.accounts) {
-      if (retriesLeft > 0) {
-        setTimeout(() => this.init(retriesLeft - 1), 150);
-      } else {
-        this.setStatus('error', 'Google Identity Services kon niet laden.');
-      }
-      return;
-    }
-    this.tokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: this.getClientId(),
-      scope: SCOPES,
-      ux_mode: 'redirect',
-      redirect_uri: this.getRedirectUri(),
-      callback: () => {},
-    });
 
     if (gotRedirectToken && this.accessToken) {
       this.setStatus('connected');
@@ -140,17 +139,15 @@ const SheetsSync = {
   },
 
   connect() {
-    if (!this.tokenClient) {
-      this.init();
-      if (!this.tokenClient) return;
-    }
     this.setStatus('connecting');
-    this.tokenClient.requestAccessToken({ prompt: this.accessToken ? '' : 'consent' });
+    window.location.href = this.buildAuthUrl();
   },
 
-  disconnect() {
-    if (this.accessToken && window.google) {
-      google.accounts.oauth2.revoke(this.accessToken, () => {});
+  async disconnect() {
+    if (this.accessToken) {
+      try {
+        await fetch('https://oauth2.googleapis.com/revoke?token=' + encodeURIComponent(this.accessToken), { method: 'POST' });
+      } catch (e) {}
     }
     this.accessToken = null;
     this.clearToken();
