@@ -14,6 +14,11 @@ const SHEET_HEADER = ['Datum', 'Dag', 'Oefening', 'Gewicht', 'Reps', 'Set Type',
 const SPREADSHEET_TITLE = 'Fitness_Tracker_Vin';
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
 
+// Ingebouwde default Client ID (geen geheim, veilig om in de client-side code te zetten
+// — in tegenstelling tot een Client Secret). Voorkomt dat je 'm op elk apparaat opnieuw
+// moet invoeren; een eigen ingevoerde waarde in Sync-tab overschrijft deze altijd.
+const DEFAULT_CLIENT_ID = '113516803135-1flcjf29keeho4he8o66mjp8bsafjbr7.apps.googleusercontent.com';
+
 const SheetsSync = {
   tokenClient: null,
   accessToken: null,
@@ -31,7 +36,7 @@ const SheetsSync = {
   },
 
   getClientId() {
-    return localStorage.getItem(SHEETS_LS.clientId) || '';
+    return localStorage.getItem(SHEETS_LS.clientId) || DEFAULT_CLIENT_ID;
   },
 
   setClientId(id) {
@@ -67,13 +72,17 @@ const SheetsSync = {
     localStorage.removeItem(SHEETS_LS.tokenExpiresAt);
   },
 
-  init() {
+  init(retriesLeft = 20) {
     if (!this.isConfigured()) {
       this.setStatus('not_configured');
       return;
     }
     if (!window.google || !window.google.accounts) {
-      this.setStatus('error', 'Google Identity Services kon niet laden.');
+      if (retriesLeft > 0) {
+        setTimeout(() => this.init(retriesLeft - 1), 150);
+      } else {
+        this.setStatus('error', 'Google Identity Services kon niet laden.');
+      }
       return;
     }
     this.tokenClient = google.accounts.oauth2.initTokenClient({
