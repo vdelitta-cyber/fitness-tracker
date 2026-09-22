@@ -144,9 +144,10 @@ main { padding: 0 16px; }
   background: var(--accent-dim);
   color: var(--accent);
 }
-.day-badge.rest { background: rgba(156,163,175,0.15); color: var(--text-muted); }
-
-.rest-message { text-align: center; color: var(--text-muted); }
+.day-badge.pull { background: rgba(96,165,250,0.15); color: #60a5fa; }
+.day-badge.legs { background: rgba(251,146,60,0.15); color: #fb923c; }
+.day-badge.upper { background: rgba(192,132,252,0.15); color: #c084fc; }
+.day-badge.lower { background: rgba(244,114,182,0.15); color: #f472b6; }
 
 /* Session summary */
 .session-exercise { padding: 8px 0; border-bottom: 1px solid var(--border); }
