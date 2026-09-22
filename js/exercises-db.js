@@ -152,9 +152,34 @@ const TRAINING_TYPES = {
 
 const TRAINING_TYPE_ORDER = ['push', 'pull', 'legs', 'upper', 'lower'];
 
+// Vast weekschema: ma push, di pull, wo legs, do rust, vr upper, za lower, zo rust
+const WEEKLY_SCHEDULE = {
+  monday: 'push', tuesday: 'pull', wednesday: 'legs',
+  thursday: null, friday: 'upper', saturday: 'lower', sunday: null,
+};
+
+function getWeekdayKey(d = new Date()) {
+  return WEEKDAY_ORDER[(d.getDay() + 6) % 7];
+}
+
+function getTodayScheduleType() {
+  return WEEKLY_SCHEDULE[getWeekdayKey()];
+}
+
+function isRestDay(dayKey) {
+  return WEEKLY_SCHEDULE[dayKey] === null;
+}
+
+// Richtgetal oefeningen per trainingstype, voor de "X van Y oefeningen" voortgang.
+const DAY_EXERCISE_TARGET = { push: 5, pull: 4, legs: 5, upper: 6, lower: 4 };
+
 // Alleen voor de "deze week" grafiek-labels (echte kalenderdagen, los van trainingstype)
 const WEEKDAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const WEEKDAY_SHORT = { monday: 'Ma', tuesday: 'Di', wednesday: 'Wo', thursday: 'Do', friday: 'Vr', saturday: 'Za', sunday: 'Zo' };
+const WEEKDAY_LABEL = {
+  monday: 'Maandag', tuesday: 'Dinsdag', wednesday: 'Woensdag', thursday: 'Donderdag',
+  friday: 'Vrijdag', saturday: 'Zaterdag', sunday: 'Zondag',
+};
 
 // Lokale datum als YYYY-MM-DD (voorkomt UTC-dagwissel 's avonds)
 function getLocalDateStr(d = new Date()) {
