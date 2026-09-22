@@ -6,6 +6,8 @@ const SHEETS_LS = {
   clientId: 'ft_google_client_id',
   spreadsheetId: 'ft_spreadsheet_id',
   lastSync: 'ft_last_sync',
+  accessToken: 'ft_access_token',
+  tokenExpiresAt: 'ft_token_expires_at',
 };
 
 const SHEET_HEADER = ['Datum', 'Dag', 'Oefening', 'Gewicht', 'Reps', 'Set Type', 'Notes'];
@@ -48,6 +50,23 @@ const SheetsSync = {
     return !!this.getClientId();
   },
 
+  saveToken(token, expiresInSec) {
+    localStorage.setItem(SHEETS_LS.accessToken, token);
+    localStorage.setItem(SHEETS_LS.tokenExpiresAt, String(Date.now() + expiresInSec * 1000));
+  },
+
+  loadValidToken() {
+    const token = localStorage.getItem(SHEETS_LS.accessToken);
+    const expiresAt = parseInt(localStorage.getItem(SHEETS_LS.tokenExpiresAt) || '0', 10);
+    if (token && Date.now() < expiresAt - 60000) return token;
+    return null;
+  },
+
+  clearToken() {
+    localStorage.removeItem(SHEETS_LS.accessToken);
+    localStorage.removeItem(SHEETS_LS.tokenExpiresAt);
+  },
+
   init() {
     if (!this.isConfigured()) {
       this.setStatus('not_configured');
@@ -66,11 +85,20 @@ const SheetsSync = {
           return;
         }
         this.accessToken = resp.access_token;
+        this.saveToken(resp.access_token, resp.expires_in);
         this.setStatus('connected');
         this.afterConnect();
       },
     });
-    this.setStatus('idle');
+
+    const cached = this.loadValidToken();
+    if (cached) {
+      this.accessToken = cached;
+      this.setStatus('connected');
+      this.afterConnect();
+    } else {
+      this.setStatus('idle');
+    }
   },
 
   connect() {
@@ -87,6 +115,7 @@ const SheetsSync = {
       google.accounts.oauth2.revoke(this.accessToken, () => {});
     }
     this.accessToken = null;
+    this.clearToken();
     this.setStatus('idle');
   },
 
@@ -112,6 +141,11 @@ const SheetsSync = {
     });
     if (!res.ok) {
       const body = await res.text();
+      if (res.status === 401) {
+        this.accessToken = null;
+        this.clearToken();
+        this.setStatus('idle');
+      }
       throw new Error(`Sheets API ${res.status}: ${body.slice(0, 200)}`);
     }
     return res.json();
