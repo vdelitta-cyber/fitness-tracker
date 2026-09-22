@@ -203,6 +203,7 @@
             <li>Ga naar "OAuth consent screen", kies "External", vul een app-naam in en voeg je eigen e-mailadres toe als test user.</li>
             <li>Ga naar "Credentials" → "Create Credentials" → "OAuth client ID" → type <strong>Web application</strong>.</li>
             <li>Voeg bij "Authorized JavaScript origins" toe: <code id="originHint"></code></li>
+            <li>Voeg bij "Authorized redirect URIs" toe: <code id="redirectHint"></code> (nodig voor Google-login op mobiel, incl. iPhone).</li>
             <li>Kopieer de Client ID hierboven en klik Opslaan, daarna Verbind met Google.</li>
           </ol>
           <p class="m-card-sub">Zonder Client ID werkt de tracker gewoon lokaal — sync is optioneel.</p>
@@ -239,6 +240,9 @@
 <script src="js/sheets-sync.js"></script>
 <script src="js/charts.js"></script>
 <script src="js/app.js"></script>
-<script>document.getElementById('originHint').textContent = window.location.origin;</script>
+<script>
+document.getElementById('originHint').textContent = window.location.origin;
+document.getElementById('redirectHint').textContent = window.location.origin + window.location.pathname;
+</script>
 </body>
 </html>
