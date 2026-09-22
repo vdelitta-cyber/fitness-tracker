@@ -6,12 +6,13 @@ const LS_KEYS = {
   usage: 'ft_usage',
   seeded: 'ft_seeded_v1',
   syncQueue: 'ft_sync_queue',
+  lastType: 'ft_last_type',
 };
 
 const STARTING_WEIGHTS = [
-  { exerciseId: 'chest_barbell_bench_press', weight: 100, reps: 5 },
-  { exerciseId: 'legs_barbell_squat', weight: 100, reps: 5 },
-  { exerciseId: 'back_barbell_deadlift', weight: 160, reps: 3 },
+  { exerciseId: 'chest_barbell_bench_press', weight: 100, reps: 5, type: 'push' },
+  { exerciseId: 'legs_barbell_squat', weight: 100, reps: 5, type: 'legs' },
+  { exerciseId: 'back_barbell_deadlift', weight: 160, reps: 3, type: 'pull' },
 ];
 
 function readJSON(key, fallback) {
@@ -161,7 +162,7 @@ const Storage = {
       sets.push({
         id: 'seed_' + sw.exerciseId,
         date: dateStr,
-        day: DAY_CONFIG[getTodayKey()].label,
+        day: TRAINING_TYPES[sw.type].label,
         exerciseId: ex.id,
         exercise: ex.name,
         category: ex.category,
@@ -174,5 +175,13 @@ const Storage = {
     }
     this.saveAllSets(sets);
     writeJSON(LS_KEYS.seeded, true);
+  },
+
+  getLastType() {
+    return localStorage.getItem(LS_KEYS.lastType) || 'push';
+  },
+
+  setLastType(type) {
+    localStorage.setItem(LS_KEYS.lastType, type);
   },
 };

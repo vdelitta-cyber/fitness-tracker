@@ -1,7 +1,7 @@
 // Hoofdlogica: state, rendering, event handling.
 
 const state = {
-  dayKey: getTodayKey(),
+  type: Storage.getLastType(),
   selectedExercise: null,
   lastWeight: '',
   lastReps: '',
@@ -12,11 +12,11 @@ const el = (id) => document.getElementById(id);
 
 function init() {
   Storage.seedStartingWeights();
-  buildDaySelect();
+  buildTypeSelect();
   bindTabs();
   bindLogTab();
   bindSettingsTab();
-  renderDay();
+  renderType();
   renderSessionSummary();
   renderSearchResults('');
 
@@ -45,30 +45,28 @@ function bindTabs() {
   });
 }
 
-// ---------- Dag / schema ----------
+// ---------- Trainingstype ----------
 
-function buildDaySelect() {
+function buildTypeSelect() {
   const select = el('daySelect');
-  select.innerHTML = DAY_ORDER.map((key) => {
-    const cfg = DAY_CONFIG[key];
-    return `<option value="${key}">${cfg.label} — ${cfg.type}</option>`;
+  select.innerHTML = TRAINING_TYPE_ORDER.map((key) => {
+    const cfg = TRAINING_TYPES[key];
+    return `<option value="${key}">${cfg.label}</option>`;
   }).join('');
-  select.value = state.dayKey;
+  select.value = state.type;
   select.addEventListener('change', () => {
-    state.dayKey = select.value;
+    state.type = select.value;
+    Storage.setLastType(state.type);
     resetExerciseSelection();
-    renderDay();
+    renderType();
     renderSearchResults(el('exerciseSearch').value);
   });
 }
 
-function renderDay() {
-  const cfg = DAY_CONFIG[state.dayKey];
-  const isRest = cfg.categories.length === 0;
-  el('dayTypeBadge').textContent = cfg.type;
-  el('dayTypeBadge').className = 'day-badge ' + (isRest ? 'rest' : cfg.type.toLowerCase());
-  el('restDayMessage').classList.toggle('hidden', !isRest);
-  el('exerciseLogger').classList.toggle('hidden', isRest);
+function renderType() {
+  const cfg = TRAINING_TYPES[state.type];
+  el('dayTypeBadge').textContent = cfg.label;
+  el('dayTypeBadge').className = 'day-badge ' + state.type;
 }
 
 // ---------- Log tab: zoeken ----------
@@ -100,17 +98,16 @@ function bindLogTab() {
 }
 
 function renderSearchResults(query) {
-  const cfg = DAY_CONFIG[state.dayKey];
+  const cfg = TRAINING_TYPES[state.type];
   const box = el('searchResults');
-  if (cfg.categories.length === 0) {
-    box.innerHTML = '';
-    box.classList.remove('show');
-    return;
-  }
   const q = query.trim().toLowerCase();
   const usage = Storage.getUsage();
 
-  let results = EXERCISES.filter((ex) => cfg.categories.includes(ex.category));
+  let results = EXERCISES.filter((ex) => {
+    if (!cfg.categories.includes(ex.category)) return false;
+    if (ex.category === 'legs' && cfg.legFocus) return ex.focus === cfg.legFocus;
+    return true;
+  });
   if (q) results = results.filter((ex) => ex.name.toLowerCase().includes(q));
 
   results = results.sort((a, b) => {
@@ -121,7 +118,7 @@ function renderSearchResults(query) {
   });
 
   if (results.length === 0) {
-    box.innerHTML = `<div class="search-empty">Geen oefeningen gevonden voor ${CATEGORY_LABELS[cfg.categories[0]] || cfg.type}</div>`;
+    box.innerHTML = `<div class="search-empty">Geen oefeningen gevonden voor ${cfg.label}</div>`;
     box.classList.add('show');
     return;
   }
@@ -202,7 +199,7 @@ function logCurrentSet() {
     return;
   }
 
-  const cfg = DAY_CONFIG[state.dayKey];
+  const cfg = TRAINING_TYPES[state.type];
   Storage.addSet({
     date: getLocalDateStr(),
     day: cfg.label,

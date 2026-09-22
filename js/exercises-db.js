@@ -1,5 +1,5 @@
-// Ingebouwde oefeningen database. Categorie bepaalt op welke trainingsdag
-// een oefening in de zoekresultaten verschijnt (zie DAY_CONFIG).
+// Ingebouwde oefeningen database. Categorie (en voor legs: focus) bepaalt bij
+// welk trainingstype een oefening in de zoekresultaten verschijnt (zie TRAINING_TYPES).
 
 const EXERCISES = [
   // CHEST (25)
@@ -56,32 +56,32 @@ const EXERCISES = [
   { id: 'back_face_pulls', name: 'Face Pulls (Back Focus)', category: 'back' },
   { id: 'back_kroc_rows', name: 'Kroc Rows', category: 'back' },
 
-  // LEGS (25)
-  { id: 'legs_hack_squat', name: 'Hack Squat', category: 'legs' },
-  { id: 'legs_leg_press', name: 'Leg Press', category: 'legs' },
-  { id: 'legs_leg_extension', name: 'Leg Extension', category: 'legs' },
-  { id: 'legs_leg_curl', name: 'Leg Curl', category: 'legs' },
-  { id: 'legs_barbell_squat', name: 'Barbell Squat', category: 'legs' },
-  { id: 'legs_dumbbell_lunges', name: 'Dumbbell Lunges', category: 'legs' },
-  { id: 'legs_leg_extension_machine', name: 'Leg Extension Machine', category: 'legs' },
-  { id: 'legs_lying_leg_curl', name: 'Lying Leg Curl', category: 'legs' },
-  { id: 'legs_smith_machine_squat', name: 'Smith Machine Squat', category: 'legs' },
-  { id: 'legs_bulgarian_split_squat', name: 'Bulgarian Split Squat', category: 'legs' },
-  { id: 'legs_pendulum_squat', name: 'Pendulum Squat', category: 'legs' },
-  { id: 'legs_v_squat', name: 'V-Squat', category: 'legs' },
-  { id: 'legs_calf_raises', name: 'Calf Raises', category: 'legs' },
-  { id: 'legs_hip_thrust', name: 'Hip Thrust', category: 'legs' },
-  { id: 'legs_seated_leg_curl', name: 'Seated Leg Curl', category: 'legs' },
-  { id: 'legs_front_squat', name: 'Front Squat', category: 'legs' },
-  { id: 'legs_walking_lunges', name: 'Walking Lunges', category: 'legs' },
-  { id: 'legs_goblet_squat', name: 'Goblet Squat', category: 'legs' },
-  { id: 'legs_standing_calf_raise', name: 'Standing Calf Raise', category: 'legs' },
-  { id: 'legs_seated_calf_raise', name: 'Seated Calf Raise', category: 'legs' },
-  { id: 'legs_glute_bridge', name: 'Glute Bridge', category: 'legs' },
-  { id: 'legs_step_ups', name: 'Step Ups', category: 'legs' },
-  { id: 'legs_sissy_squat', name: 'Sissy Squat', category: 'legs' },
-  { id: 'legs_belt_squat', name: 'Belt Squat', category: 'legs' },
-  { id: 'legs_nordic_curl', name: 'Nordic Curl', category: 'legs' },
+  // LEGS (25) — focus onderscheidt Legs (quad) van Lower (glute/hamstring)
+  { id: 'legs_hack_squat', name: 'Hack Squat', category: 'legs', focus: 'quad' },
+  { id: 'legs_leg_press', name: 'Leg Press', category: 'legs', focus: 'quad' },
+  { id: 'legs_leg_extension', name: 'Leg Extension', category: 'legs', focus: 'quad' },
+  { id: 'legs_leg_curl', name: 'Leg Curl', category: 'legs', focus: 'glute' },
+  { id: 'legs_barbell_squat', name: 'Barbell Squat', category: 'legs', focus: 'quad' },
+  { id: 'legs_dumbbell_lunges', name: 'Dumbbell Lunges', category: 'legs', focus: 'glute' },
+  { id: 'legs_leg_extension_machine', name: 'Leg Extension Machine', category: 'legs', focus: 'quad' },
+  { id: 'legs_lying_leg_curl', name: 'Lying Leg Curl', category: 'legs', focus: 'glute' },
+  { id: 'legs_smith_machine_squat', name: 'Smith Machine Squat', category: 'legs', focus: 'quad' },
+  { id: 'legs_bulgarian_split_squat', name: 'Bulgarian Split Squat', category: 'legs', focus: 'glute' },
+  { id: 'legs_pendulum_squat', name: 'Pendulum Squat', category: 'legs', focus: 'quad' },
+  { id: 'legs_v_squat', name: 'V-Squat', category: 'legs', focus: 'quad' },
+  { id: 'legs_calf_raises', name: 'Calf Raises', category: 'legs', focus: 'quad' },
+  { id: 'legs_hip_thrust', name: 'Hip Thrust', category: 'legs', focus: 'glute' },
+  { id: 'legs_seated_leg_curl', name: 'Seated Leg Curl', category: 'legs', focus: 'glute' },
+  { id: 'legs_front_squat', name: 'Front Squat', category: 'legs', focus: 'quad' },
+  { id: 'legs_walking_lunges', name: 'Walking Lunges', category: 'legs', focus: 'glute' },
+  { id: 'legs_goblet_squat', name: 'Goblet Squat', category: 'legs', focus: 'quad' },
+  { id: 'legs_standing_calf_raise', name: 'Standing Calf Raise', category: 'legs', focus: 'quad' },
+  { id: 'legs_seated_calf_raise', name: 'Seated Calf Raise', category: 'legs', focus: 'quad' },
+  { id: 'legs_glute_bridge', name: 'Glute Bridge', category: 'legs', focus: 'glute' },
+  { id: 'legs_step_ups', name: 'Step Ups', category: 'legs', focus: 'glute' },
+  { id: 'legs_sissy_squat', name: 'Sissy Squat', category: 'legs', focus: 'quad' },
+  { id: 'legs_belt_squat', name: 'Belt Squat', category: 'legs', focus: 'quad' },
+  { id: 'legs_nordic_curl', name: 'Nordic Curl', category: 'legs', focus: 'glute' },
 
   // SHOULDERS (25)
   { id: 'shoulders_military_press', name: 'Military Press', category: 'shoulders' },
@@ -140,23 +140,21 @@ const EXERCISES = [
   { id: 'triceps_kickbacks', name: 'Tricep Kickbacks', category: 'triceps' },
 ];
 
-// Trainingsschema: dag -> { label, type, categories (welke spiergroepen filteren de zoekresultaten) }
-const DAY_CONFIG = {
-  monday:    { label: 'Maandag',   type: 'Push',  categories: ['chest', 'shoulders', 'triceps'] },
-  tuesday:   { label: 'Dinsdag',   type: 'Pull',  categories: ['back', 'biceps'] },
-  wednesday: { label: 'Woensdag',  type: 'Legs',  categories: ['legs'] },
-  thursday:  { label: 'Donderdag', type: 'Rest',  categories: [] },
-  friday:    { label: 'Vrijdag',   type: 'Upper', categories: ['chest', 'back', 'shoulders', 'biceps', 'triceps'] },
-  saturday:  { label: 'Zaterdag',  type: 'Lower', categories: ['legs'] },
-  sunday:    { label: 'Zondag',    type: 'Rest',  categories: [] },
+// Trainingstypes: key -> { label, categories (spiergroepen die de zoekresultaten filteren), legFocus }
+// legFocus onderscheidt Legs (quad-dominant) van Lower (glute/hamstring-dominant) binnen de 'legs' categorie.
+const TRAINING_TYPES = {
+  push:  { label: 'Push',  categories: ['chest', 'shoulders', 'triceps'] },
+  pull:  { label: 'Pull',  categories: ['back', 'biceps'] },
+  legs:  { label: 'Legs (Quad)', categories: ['legs'], legFocus: 'quad' },
+  upper: { label: 'Upper', categories: ['chest', 'back', 'shoulders', 'biceps', 'triceps'] },
+  lower: { label: 'Lower (Glute/Hamstring)', categories: ['legs'], legFocus: 'glute' },
 };
 
-const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+const TRAINING_TYPE_ORDER = ['push', 'pull', 'legs', 'upper', 'lower'];
 
-function getTodayKey() {
-  const jsDay = new Date().getDay(); // 0 = zondag
-  return DAY_ORDER[(jsDay + 6) % 7];
-}
+// Alleen voor de "deze week" grafiek-labels (echte kalenderdagen, los van trainingstype)
+const WEEKDAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+const WEEKDAY_SHORT = { monday: 'Ma', tuesday: 'Di', wednesday: 'Wo', thursday: 'Do', friday: 'Vr', saturday: 'Za', sunday: 'Zo' };
 
 // Lokale datum als YYYY-MM-DD (voorkomt UTC-dagwissel 's avonds)
 function getLocalDateStr(d = new Date()) {

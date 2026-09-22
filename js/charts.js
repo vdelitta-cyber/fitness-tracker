@@ -43,7 +43,7 @@ const ChartsUI = {
   },
 
   renderWeeklyVolume(canvas, perDay) {
-    const days = DAY_ORDER;
+    const days = WEEKDAY_ORDER;
     const now = new Date();
     const dayIdx = (now.getDay() + 6) % 7;
     const startOfWeek = new Date(now);
@@ -55,7 +55,7 @@ const ChartsUI = {
       const d = new Date(startOfWeek);
       d.setDate(startOfWeek.getDate() + i);
       const key = d.toISOString().slice(0, 10);
-      labels.push(DAY_CONFIG[days[i]].label.slice(0, 2));
+      labels.push(WEEKDAY_SHORT[days[i]]);
       data.push(perDay[key] ? perDay[key].volume : 0);
     }
 
