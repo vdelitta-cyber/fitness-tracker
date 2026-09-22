@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Fitness Tracker Vin</title>
+<link rel="stylesheet" href="css/styles.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+<div id="app">
+
+  <header class="topbar">
+    <h1>Fitness Tracker <span class="accent">Vin</span></h1>
+    <button id="syncBtn" class="sync-badge">⚪ Sync</button>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="log">Log</button>
+    <button class="tab" data-tab="analytics">Analytics</button>
+    <button class="tab" data-tab="history">PR's</button>
+    <button class="tab" data-tab="settings">Sync</button>
+  </nav>
+
+  <main>
+
+    <section id="tab-log" class="tab-panel active">
+      <div class="day-picker">
+        <select id="daySelect"></select>
+        <span id="dayTypeBadge" class="day-badge"></span>
+      </div>
+
+      <div id="restDayMessage" class="card rest-message hidden">
+        <p>💤 Rustdag — geen training gepland. Kies hierboven een andere dag om toch te loggen.</p>
+      </div>
+
+      <div class="card">
+        <h2>Sessie vandaag</h2>
+        <div id="sessionList"></div>
+      </div>
+
+      <div id="exerciseLogger">
+        <div class="search-wrap">
+          <input id="exerciseSearch" type="text" placeholder="Zoek oefening..." autocomplete="off">
+          <div id="searchResults" class="search-results"></div>
+        </div>
+
+        <div id="selectedExercisePanel" class="card hidden">
+          <h3 id="selectedExerciseName"></h3>
+          <div id="exerciseHistory"></div>
+
+          <form id="setForm">
+            <div class="field-row">
+              <div class="field">
+                <label>Gewicht (kg)</label>
+                <input id="weightInput" type="number" step="0.5" min="0" inputmode="decimal" required>
+              </div>
+              <div class="field">
+                <label>Reps</label>
+                <input id="repsInput" type="number" step="1" min="1" inputmode="numeric" required>
+              </div>
+            </div>
+            <div class="radio-row">
+              <label class="radio-pill"><input type="radio" name="setType" value="warmup"> Warmup</label>
+              <label class="radio-pill"><input type="radio" name="setType" value="working" checked> Working</label>
+            </div>
+            <button type="submit" id="logSetBtn" class="btn-primary">Log Set</button>
+          </form>
+
+          <div id="justLoggedActions" class="hidden">
+            <button id="addAnotherSetBtn" class="btn-primary">+ Voeg nog een set toe</button>
+            <button id="newExerciseBtn" class="btn-secondary">Andere oefening zoeken</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-analytics" class="tab-panel">
+      <div class="card">
+        <h2>Progressie per oefening</h2>
+        <select id="analyticsExerciseSelect"></select>
+        <canvas id="progressionCanvas" height="220"></canvas>
+        <div id="progressionInsight"></div>
+      </div>
+      <div class="card">
+        <h2>Deze week</h2>
+        <canvas id="volumeCanvas" height="200"></canvas>
+        <div id="weeklyStats" class="stats-row"></div>
+      </div>
+    </section>
+
+    <section id="tab-history" class="tab-panel">
+      <div class="card">
+        <h2>Personal Records</h2>
+        <p class="muted small">Alleen working sets tellen mee.</p>
+        <div id="prList"></div>
+      </div>
+    </section>
+
+    <section id="tab-settings" class="tab-panel">
+      <div class="card">
+        <h2>Google Sheets sync</h2>
+        <p id="syncStatusText" class="muted"></p>
+        <p id="lastSyncText" class="muted small"></p>
+
+        <label class="small">Google OAuth Client ID</label>
+        <input id="clientIdInput" type="text" placeholder="xxxxxxxx.apps.googleusercontent.com">
+        <div class="btn-row">
+          <button id="saveClientIdBtn" class="btn-secondary">Opslaan</button>
+          <button id="connectSyncBtn" class="btn-primary hidden">Verbind met Google</button>
+        </div>
+        <a id="sheetLink" class="sheet-link hidden" target="_blank" rel="noopener">Open Google Sheet →</a>
+
+        <details class="setup-help">
+          <summary>Hoe stel ik dit in?</summary>
+          <ol>
+            <li>Ga naar <strong>console.cloud.google.com</strong> en maak (of kies) een project.</li>
+            <li>Enable de <strong>Google Sheets API</strong> en <strong>Google Drive API</strong> onder "APIs &amp; Services".</li>
+            <li>Ga naar "OAuth consent screen", kies "External", vul een app-naam in en voeg je eigen e-mailadres toe als test user.</li>
+            <li>Ga naar "Credentials" → "Create Credentials" → "OAuth client ID" → type <strong>Web application</strong>.</li>
+            <li>Voeg bij "Authorized JavaScript origins" toe: <code id="originHint"></code></li>
+            <li>Kopieer de Client ID hierboven en klik Opslaan, daarna Verbind met Google.</li>
+          </ol>
+          <p class="muted small">Zonder Client ID werkt de tracker gewoon lokaal (localStorage) — sync is optioneel.</p>
+        </details>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script src="js/exercises-db.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/sheets-sync.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/app.js"></script>
+<script>document.getElementById('originHint').textContent = window.location.origin;</script>
+</body>
+</html>
