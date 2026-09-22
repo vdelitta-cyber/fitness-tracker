@@ -6,7 +6,7 @@
 <title>Fitness Tracker Vin</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/styles.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -14,160 +14,188 @@
 <body>
 <div id="app">
 
-  <header class="topbar">
-    <h1>Fitness Tracker <span class="accent">Vin</span></h1>
-    <button id="syncBtn" class="sync-badge">⚪ Sync</button>
-  </header>
-
-  <section class="dashboard">
-    <div class="dash-grid">
-      <div class="dash-tile">
-        <div class="dash-icon"></div>
-        <div class="dash-value" id="dashVolume">0kg</div>
-        <div class="dash-label">Volume deze week</div>
-      </div>
-      <div class="dash-tile">
-        <div class="dash-icon"></div>
-        <div class="dash-value" id="dashSets">0</div>
-        <div class="dash-label">Working sets</div>
-      </div>
-      <div class="dash-tile">
-        <div class="dash-icon"></div>
-        <div class="dash-value" id="dashDays">0</div>
-        <div class="dash-label">Trainingsdagen</div>
-      </div>
-    </div>
-    <div class="dash-progress">
-      <div class="dash-progress-label">
-        <span>Weekdoel</span>
-        <span id="dashProgressPct">0%</span>
-      </div>
-      <div class="progress-track"><div class="progress-fill" id="dashProgressFill"></div></div>
-    </div>
-  </section>
-
-  <nav class="tabs">
-    <button class="tab active" data-tab="log">Log</button>
-    <button class="tab" data-tab="analytics">Analytics</button>
-    <button class="tab" data-tab="history">PR's</button>
-    <button class="tab" data-tab="settings">Sync</button>
-  </nav>
-
   <main>
 
+    <!-- ===== VANDAAG ===== -->
     <section id="tab-log" class="tab-panel active">
-      <div class="day-picker">
-        <select id="daySelect"></select>
-        <span id="dayTypeBadge" class="day-badge"></span>
+
+      <header class="m-header">
+        <div class="m-header-text">
+          <span class="m-date" id="mDate"></span>
+          <h1 class="m-greeting" id="mGreeting"></h1>
+        </div>
+        <button class="m-profile" aria-label="Profiel">V</button>
+      </header>
+
+      <section class="m-hero">
+        <div class="m-gauge-wrap">
+          <svg width="168" height="168" viewBox="0 0 168 168" aria-hidden="true">
+            <circle cx="84" cy="84" r="78" fill="#1C1814" stroke="#2E2720" stroke-width="1"></circle>
+            <g stroke="#3A3128" stroke-width="1.5">
+              <line x1="84" y1="10" x2="84" y2="18"></line><line x1="84" y1="150" x2="84" y2="158"></line><line x1="10" y1="84" x2="18" y2="84"></line><line x1="150" y1="84" x2="158" y2="84"></line>
+              <line x1="121" y1="20" x2="117" y2="27"></line><line x1="148" y1="47" x2="141" y2="51"></line><line x1="148" y1="121" x2="141" y2="117"></line><line x1="121" y1="148" x2="117" y2="141"></line>
+              <line x1="47" y1="148" x2="51" y2="141"></line><line x1="20" y1="121" x2="27" y2="117"></line><line x1="20" y1="47" x2="27" y2="51"></line><line x1="47" y1="20" x2="51" y2="27"></line>
+            </g>
+            <circle cx="84" cy="84" r="64" fill="none" stroke="#2A241E" stroke-width="6"></circle>
+            <circle cx="84" cy="84" r="64" fill="none" stroke="#C9A96E" stroke-width="6" stroke-linecap="round" id="mGaugeArc" stroke-dasharray="0 402.1" transform="rotate(-90 84 84)"></circle>
+            <text x="84" y="92" text-anchor="middle" font-family="Cormorant Garamond, Georgia, serif" font-size="54" font-weight="600" fill="#F2EDE4" id="mStreakNum">0</text>
+            <text x="84" y="114" text-anchor="middle" font-family="Manrope, sans-serif" font-size="11" fill="#A89F92">dagen op schema</text>
+          </svg>
+        </div>
+        <div class="m-hero-side">
+          <span class="m-hero-label">Weekdoel</span>
+          <span class="m-hero-pct" id="mWeekPct">0%</span>
+          <span class="m-hero-note" id="mWeekNote"></span>
+        </div>
+      </section>
+
+      <section class="m-stats">
+        <div class="m-stat">
+          <span class="m-stat-num" id="mVolume">0</span>
+          <span class="m-stat-label">kg volume</span>
+        </div>
+        <div class="m-stat">
+          <span class="m-stat-num" id="mSets">0</span>
+          <span class="m-stat-label">working sets</span>
+        </div>
+        <div class="m-stat">
+          <span class="m-stat-num"><span id="mDays">0</span><span class="m-stat-sub">/5</span></span>
+          <span class="m-stat-label">trainingsdagen</span>
+        </div>
+      </section>
+
+      <p class="m-quote" id="mQuote"></p>
+
+      <section class="m-card">
+        <div class="m-card-row">
+          <span class="m-card-title">Intensiteit vandaag</span>
+          <span class="m-intensity-label" id="mIntensityLabel"></span>
+        </div>
+        <div class="m-segments" id="mSegments"></div>
+        <p class="m-empty hidden" id="mIntensityEmpty">Log je eerste set om de intensiteit te zien.</p>
+
+        <div class="m-divider"></div>
+
+        <div class="m-card-row">
+          <span class="m-card-title">Spierfocus deze week</span>
+          <span class="m-card-sub" id="mFocusSummary"></span>
+        </div>
+        <div class="m-stacked-bar" id="mStackedBar"></div>
+        <div class="m-legend" id="mLegend"></div>
+        <p class="m-empty hidden" id="mFocusEmpty">Nog geen working sets deze week.</p>
+      </section>
+
+      <div id="dayTypeRow" class="m-daytype-row">
+        <span class="m-daytype-title" id="mDayTypeTitle"></span>
+        <span class="m-daytype-progress" id="mDayTypeProgress"></span>
       </div>
 
-      <div class="card">
-        <h2>Sessie vandaag</h2>
-        <div id="sessionList"></div>
+      <div id="restDayCard" class="m-card hidden">
+        <p class="m-empty">Rustdag. Herstel is onderdeel van de vooruitgang.</p>
       </div>
 
       <div id="exerciseLogger">
-        <div class="search-wrap">
-          <span class="search-icon"></span>
-          <input id="exerciseSearch" type="text" placeholder="Zoek oefening..." autocomplete="off">
-          <div id="searchResults" class="search-results"></div>
-        </div>
+        <label class="m-search" for="exerciseSearch">
+          <span class="m-search-icon"></span>
+          <span class="sr-only">Zoek oefening</span>
+          <input id="exerciseSearch" type="text" placeholder="Zoek oefening" autocomplete="off">
+          <div id="searchResults" class="m-search-results"></div>
+        </label>
 
-        <div id="selectedExercisePanel" class="card hidden">
-          <h3 id="selectedExerciseName"></h3>
-          <div id="exerciseHistory"></div>
+        <div id="sessionList" class="m-session-list"></div>
 
+        <div id="selectedExercisePanel" class="m-input-panel hidden">
+          <div class="m-input-panel-name" id="selectedExerciseName"></div>
           <form id="setForm">
-            <div class="field-row">
-              <div class="field">
-                <label>Gewicht (kg)</label>
+            <div class="m-input-row">
+              <div class="m-field">
+                <label for="weightInput">Gewicht (kg)</label>
                 <input id="weightInput" type="number" step="0.5" min="0" inputmode="decimal" required>
               </div>
-              <div class="field">
-                <label>Reps</label>
+              <div class="m-field">
+                <label for="repsInput">Reps</label>
                 <input id="repsInput" type="number" step="1" min="1" inputmode="numeric" required>
               </div>
             </div>
-            <div class="radio-row">
-              <label class="radio-pill"><input type="radio" name="setType" value="warmup"> Warmup</label>
-              <label class="radio-pill"><input type="radio" name="setType" value="working" checked> Working</label>
+            <div class="m-toggle-row">
+              <label class="m-toggle"><input type="radio" name="setType" value="warmup"> Warmup</label>
+              <label class="m-toggle"><input type="radio" name="setType" value="working" checked> Working</label>
             </div>
-            <button type="submit" id="logSetBtn" class="btn-primary">Log Set</button>
           </form>
-
-          <div id="justLoggedActions" class="hidden">
-            <button id="addAnotherSetBtn" class="btn-primary">+ Voeg nog een set toe</button>
-            <button id="newExerciseBtn" class="btn-secondary">Andere oefening zoeken</button>
-          </div>
         </div>
       </div>
+
+      <div class="m-log-btn-wrap">
+        <button type="submit" form="setForm" id="logSetBtn" class="m-log-btn" disabled>Set loggen</button>
+      </div>
+
     </section>
 
+    <!-- ===== ANALYSE ===== -->
     <section id="tab-analytics" class="tab-panel">
-      <div class="card">
-        <h2>Progressie per oefening</h2>
-        <select id="analyticsExerciseSelect"></select>
-        <canvas id="progressionCanvas" height="220"></canvas>
+      <header class="m-screen-header"><h1>Analyse</h1></header>
+
+      <section class="m-card">
+        <div class="m-card-row"><span class="m-card-title">Progressie per oefening</span></div>
+        <select id="analyticsExerciseSelect" class="m-select"></select>
+        <canvas id="progressionCanvas" height="200"></canvas>
+        <p class="m-empty hidden" id="progressionEmpty">Nog geen working sets gelogd voor een progressiegrafiek.</p>
         <div id="progressionInsight"></div>
-      </div>
+      </section>
 
-      <div class="card">
-        <h2>Deze week</h2>
-        <canvas id="volumeCanvas" height="200"></canvas>
-        <div id="weeklyStats" class="stats-row"></div>
-      </div>
+      <section class="m-card">
+        <div class="m-card-row"><span class="m-card-title">Weekvolume</span></div>
+        <canvas id="volumeCanvas" height="180"></canvas>
+        <div id="weeklyStats" class="m-stats-row"></div>
+      </section>
 
-      <div class="card">
-        <h2>Volume trend</h2>
-        <canvas id="volumeTrendCanvas" height="180"></canvas>
-      </div>
-
-      <div class="card">
-        <h2>Muscle group focus</h2>
-        <canvas id="muscleFocusCanvas" height="200"></canvas>
-        <p id="muscleFocusEmpty" class="muted hidden">Nog geen working sets deze week.</p>
-      </div>
-
-      <div class="card">
-        <h2>Consistency</h2>
-        <div id="consistencyCalendar" class="consistency-grid"></div>
-        <div class="consistency-legend">
-          <span><i class="dot on"></i> Getraind</span>
-          <span><i class="dot off"></i> Rust</span>
+      <section class="m-card">
+        <div class="m-card-row"><span class="m-card-title">Consistency, laatste 5 weken</span></div>
+        <div id="consistencyCalendar" class="m-consistency-grid"></div>
+        <div class="m-consistency-legend">
+          <span><i class="m-dot on"></i> Getraind</span>
+          <span><i class="m-dot off"></i> Rust</span>
         </div>
-      </div>
+      </section>
     </section>
 
+    <!-- ===== RECORDS ===== -->
     <section id="tab-history" class="tab-panel">
-      <div class="card">
-        <h2>Top PR's</h2>
-        <p class="muted small">Alleen working sets tellen mee.</p>
+      <header class="m-screen-header"><h1>Records</h1></header>
+
+      <section class="m-card">
         <div id="prTopList"></div>
-      </div>
-      <div class="card" id="prExpandCard">
-        <button id="prExpandBtn" class="pr-expand-btn">
-          <span>Alle PR's</span>
+        <p class="m-empty hidden" id="prEmpty">Nog geen personal records. Log je eerste set om te beginnen.</p>
+      </section>
+      <section class="m-card hidden" id="prExpandCard">
+        <button id="prExpandBtn" class="m-expand-btn">
+          <span>Alle records</span>
           <span class="icon"></span>
         </button>
         <div id="prRestList" class="hidden"></div>
-      </div>
+      </section>
     </section>
 
+    <!-- ===== SYNC ===== -->
     <section id="tab-settings" class="tab-panel">
-      <div class="card">
-        <h2>Google Sheets sync</h2>
-        <p id="syncStatusText" class="muted"></p>
-        <p id="lastSyncText" class="muted small"></p>
+      <header class="m-screen-header"><h1>Sync</h1></header>
 
-        <label class="small">Google OAuth Client ID</label>
-        <input id="clientIdInput" type="text" placeholder="xxxxxxxx.apps.googleusercontent.com">
-        <div class="btn-row">
-          <button id="saveClientIdBtn" class="btn-secondary">Opslaan</button>
-          <button id="connectSyncBtn" class="btn-primary hidden">Verbind met Google</button>
+      <section class="m-card">
+        <div class="m-sync-status-row">
+          <span class="m-sync-dot" id="syncDot"></span>
+          <span id="syncStatusText" class="m-card-title"></span>
         </div>
-        <a id="sheetLink" class="sheet-link hidden" target="_blank" rel="noopener">Open Google Sheet →</a>
+        <p id="lastSyncText" class="m-card-sub"></p>
 
-        <details class="setup-help">
+        <label class="m-field-label" for="clientIdInput">Google OAuth Client ID</label>
+        <input id="clientIdInput" type="text" class="m-text-input" placeholder="xxxxxxxx.apps.googleusercontent.com">
+        <div class="m-btn-row">
+          <button id="saveClientIdBtn" class="m-btn-secondary">Opslaan</button>
+          <button id="connectSyncBtn" class="m-btn-primary hidden">Verbind met Google</button>
+        </div>
+        <a id="sheetLink" class="m-link hidden" target="_blank" rel="noopener">Open Google Sheet →</a>
+
+        <details class="m-setup-help">
           <summary>Hoe stel ik dit in?</summary>
           <ol>
             <li>Ga naar <strong>console.cloud.google.com</strong> en maak (of kies) een project.</li>
@@ -177,12 +205,32 @@
             <li>Voeg bij "Authorized JavaScript origins" toe: <code id="originHint"></code></li>
             <li>Kopieer de Client ID hierboven en klik Opslaan, daarna Verbind met Google.</li>
           </ol>
-          <p class="muted small">Zonder Client ID werkt de tracker gewoon lokaal (localStorage) — sync is optioneel.</p>
+          <p class="m-card-sub">Zonder Client ID werkt de tracker gewoon lokaal — sync is optioneel.</p>
         </details>
-      </div>
+      </section>
     </section>
 
   </main>
+
+  <nav class="m-bottom-nav">
+    <button class="m-nav-item active" data-tab="log">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"></path></svg>
+      Vandaag
+    </button>
+    <button class="m-nav-item" data-tab="analytics">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 19l5-6 4 3 7-9"></path></svg>
+      Analyse
+    </button>
+    <button class="m-nav-item" data-tab="history">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0V4zM12 13v4M8 20h8"></path></svg>
+      Records
+    </button>
+    <button class="m-nav-item" data-tab="settings">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 12a8 8 0 0 1 14-5M20 12a8 8 0 0 1-14 5M18 3v4h-4M6 21v-4h4"></path></svg>
+      Sync
+    </button>
+  </nav>
+
 </div>
 
 <script src="js/icons.js"></script>
