@@ -166,3 +166,9 @@ const CATEGORY_LABELS = {
   chest: 'Chest', back: 'Back', legs: 'Legs', shoulders: 'Shoulders',
   biceps: 'Biceps', triceps: 'Triceps',
 };
+
+// Gevalideerde categorische palette (dataviz skill: adjacent CVD/normal-vision/contrast — alle PASS, dark mode)
+const CATEGORY_COLORS = {
+  chest: '#3987e5', back: '#d95926', legs: '#199e70',
+  shoulders: '#c98500', biceps: '#d55181', triceps: '#9085e9',
+};

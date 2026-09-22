@@ -10,13 +10,18 @@ const state = {
 
 const el = (id) => document.getElementById(id);
 
+const WEEKLY_TARGET_DAYS = 5;
+
 function init() {
+  injectStaticIcons();
   Storage.seedStartingWeights();
   buildTypeSelect();
   bindTabs();
   bindLogTab();
   bindSettingsTab();
+  bindPRTab();
   renderType();
+  renderDashboard();
   renderSessionSummary();
   renderSearchResults('');
 
@@ -24,6 +29,28 @@ function init() {
   SheetsSync.init();
   el('clientIdInput').value = SheetsSync.getClientId();
   renderSettingsTab();
+}
+
+function injectStaticIcons() {
+  document.querySelectorAll('.dash-tile')[0].querySelector('.dash-icon').innerHTML = ICONS.volume;
+  document.querySelectorAll('.dash-tile')[1].querySelector('.dash-icon').innerHTML = ICONS.sets;
+  document.querySelectorAll('.dash-tile')[2].querySelector('.dash-icon').innerHTML = ICONS.calendar;
+  el('exerciseLogger').querySelector('.search-icon').innerHTML = ICONS.search;
+  el('prExpandBtn').querySelector('.icon').innerHTML = ICONS.chevronDown;
+}
+
+function renderDashboard() {
+  const weekly = Storage.getWeeklyVolume();
+  const days = Object.keys(weekly.perDay).length;
+  el('dashVolume').textContent = weekly.totalVolume.toLocaleString('nl-NL') + 'kg';
+  el('dashSets').textContent = weekly.totalSets;
+  el('dashDays').textContent = days;
+
+  const pct = Math.min(100, Math.round((days / WEEKLY_TARGET_DAYS) * 100));
+  el('dashProgressPct').textContent = pct + '%';
+  const fill = el('dashProgressFill');
+  fill.style.width = pct + '%';
+  fill.classList.toggle('complete', pct > 80);
 }
 
 // ---------- Tabs ----------
@@ -216,6 +243,7 @@ function logCurrentSet() {
 
   renderExerciseHistory(ex.id);
   renderSessionSummary();
+  renderDashboard();
 
   el('setForm').classList.add('hidden');
   el('justLoggedActions').classList.remove('hidden');
@@ -238,18 +266,30 @@ function renderSessionSummary() {
 
   const byExercise = {};
   for (const s of sets) {
-    byExercise[s.exercise] = byExercise[s.exercise] || [];
-    byExercise[s.exercise].push(s);
+    byExercise[s.exerciseId] = byExercise[s.exerciseId] || { name: s.exercise, sets: [] };
+    byExercise[s.exerciseId].sets.push(s);
   }
+  const prs = Storage.getPRs();
+  const prMap = Object.fromEntries(prs.map((pr) => [pr.exerciseId, pr.weight]));
 
-  box.innerHTML = Object.entries(byExercise).map(([name, exSets]) => `
-    <div class="session-exercise">
-      <div class="session-exercise-name">${name}</div>
-      <div class="session-sets">
-        ${exSets.map((s) => `<span class="set-chip ${s.setType}">${s.setType === 'warmup' ? 'W' : ''}${s.weight}kg×${s.reps}</span>`).join('')}
+  box.innerHTML = Object.entries(byExercise).map(([exerciseId, data]) => {
+    const pr = prMap[exerciseId];
+    return `
+    <div class="exercise-card">
+      <div class="exercise-card-header">
+        <span class="exercise-card-name">${data.name}</span>
+        ${pr ? `<span class="exercise-card-pr">${icon('trophy')}PR ${pr}kg</span>` : ''}
       </div>
-    </div>
-  `).join('');
+      <div class="exercise-card-sets">
+        ${data.sets.map((s) => `
+          <span class="set-pill ${s.setType}">
+            <span class="set-pill-value">${s.weight}kg × ${s.reps}</span>
+            <span class="set-pill-badge">${s.setType === 'warmup' ? 'Warmup' : 'Working'}</span>
+          </span>
+        `).join('')}
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ---------- Analytics tab ----------
@@ -281,6 +321,24 @@ function renderAnalyticsTab() {
     <div class="stat"><span class="stat-value">${weekly.totalSets}</span><span class="stat-label">Working sets</span></div>
     <div class="stat"><span class="stat-value">${Object.keys(weekly.perDay).length}</span><span class="stat-label">Trainingsdagen</span></div>
   `;
+
+  ChartsUI.renderVolumeTrend(el('volumeTrendCanvas'), Storage.getVolumeByWeek(8));
+
+  const focus = Storage.getMuscleFocusThisWeek();
+  const hasFocus = Object.keys(focus).length > 0;
+  el('muscleFocusCanvas').classList.toggle('hidden', !hasFocus);
+  el('muscleFocusEmpty').classList.toggle('hidden', hasFocus);
+  if (hasFocus) ChartsUI.renderMuscleFocus(el('muscleFocusCanvas'), focus);
+
+  renderConsistencyCalendar();
+}
+
+function renderConsistencyCalendar() {
+  const days = Storage.getConsistencyDays(28);
+  el('consistencyCalendar').innerHTML = days.map((d) => {
+    const label = new Date(d.date).toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit' });
+    return `<div class="consistency-box ${d.trained ? 'on' : 'off'}" title="${label}"></div>`;
+  }).join('');
 }
 
 function renderProgressionFor(exerciseId) {
@@ -321,14 +379,45 @@ function buildInsight(sets) {
 
 // ---------- PR tab ----------
 
+function bindPRTab() {
+  el('prExpandBtn').addEventListener('click', () => {
+    const list = el('prRestList');
+    const expanded = !list.classList.contains('hidden');
+    list.classList.toggle('hidden', expanded);
+    el('prExpandBtn').classList.toggle('open', !expanded);
+  });
+}
+
 function renderPRTab() {
-  const prs = Storage.getPRs();
-  const box = el('prList');
+  const prs = Storage.getPRs().sort((a, b) => b.weight - a.weight);
+  const topBox = el('prTopList');
+  const restBox = el('prRestList');
+  const expandBtn = el('prExpandBtn');
+
   if (prs.length === 0) {
-    box.innerHTML = '<p class="muted">Nog geen PRs gelogd.</p>';
+    topBox.innerHTML = '<p class="muted">Nog geen PRs gelogd.</p>';
+    el('prExpandCard').classList.add('hidden');
+    restBox.innerHTML = '';
     return;
   }
-  box.innerHTML = prs.map((pr) => `
+
+  const top = prs.slice(0, 5);
+  const rest = prs.slice(5);
+
+  topBox.innerHTML = top.map((pr) => `
+    <div class="pr-featured">
+      <div class="pr-featured-icon">${icon('trophy')}</div>
+      <div class="pr-featured-body">
+        <div class="pr-featured-name">${pr.exercise}</div>
+        <div class="pr-featured-meta">${CATEGORY_LABELS[pr.category] || ''} · ${formatDateShort(pr.date)}</div>
+      </div>
+      <div class="pr-featured-value">${pr.weight}<span class="unit">kg</span><span class="reps">× ${pr.reps}</span></div>
+    </div>
+  `).join('');
+
+  el('prExpandCard').classList.toggle('hidden', rest.length === 0);
+  expandBtn.querySelector('span').textContent = `Alle PR's (${rest.length} meer)`;
+  restBox.innerHTML = rest.map((pr) => `
     <div class="pr-row">
       <div class="pr-name">${pr.exercise}</div>
       <div class="pr-value">${pr.weight}kg <span class="muted">× ${pr.reps}</span></div>

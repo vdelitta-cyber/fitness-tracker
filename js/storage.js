@@ -98,14 +98,14 @@ const Storage = {
     const prMap = {};
     for (const s of sets) {
       if (!prMap[s.exerciseId] || s.weight > prMap[s.exerciseId].weight) {
-        prMap[s.exerciseId] = { exerciseId: s.exerciseId, exercise: s.exercise, weight: s.weight, reps: s.reps, date: s.date };
+        prMap[s.exerciseId] = { exerciseId: s.exerciseId, exercise: s.exercise, category: s.category, weight: s.weight, reps: s.reps, date: s.date };
       }
     }
     return Object.values(prMap).sort((a, b) => b.date.localeCompare(a.date));
   },
 
   getWeeklyVolume() {
-    const sets = this.getAllSets().filter((s) => s.setType === 'working');
+    const sets = this.getAllSets().filter((s) => s.setType === 'working' && s.notes !== 'Startgewicht');
     const now = new Date();
     const startOfWeek = new Date(now);
     const dayIdx = (now.getDay() + 6) % 7; // ma = 0
@@ -183,5 +183,64 @@ const Storage = {
 
   setLastType(type) {
     localStorage.setItem(LS_KEYS.lastType, type);
+  },
+
+  getVolumeByWeek(weeksBack = 8) {
+    const sets = this.getAllSets().filter((s) => s.setType === 'working' && s.notes !== 'Startgewicht');
+    const now = new Date();
+    const dayIdx = (now.getDay() + 6) % 7;
+    const thisWeekStart = new Date(now);
+    thisWeekStart.setDate(now.getDate() - dayIdx);
+    thisWeekStart.setHours(0, 0, 0, 0);
+
+    const weeks = [];
+    for (let i = weeksBack - 1; i >= 0; i--) {
+      const start = new Date(thisWeekStart);
+      start.setDate(thisWeekStart.getDate() - i * 7);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 7);
+      weeks.push({ start, end, volume: 0 });
+    }
+    for (const s of sets) {
+      const d = new Date(s.date);
+      const wk = weeks.find((w) => d >= w.start && d < w.end);
+      if (wk) wk.volume += s.weight * s.reps;
+    }
+    return weeks.map((w, i) => ({
+      label: i === weeks.length - 1 ? 'Nu' : `-${weeks.length - 1 - i}w`,
+      volume: Math.round(w.volume),
+    }));
+  },
+
+  getMuscleFocusThisWeek() {
+    const sets = this.getAllSets().filter((s) => s.setType === 'working' && s.notes !== 'Startgewicht');
+    const now = new Date();
+    const dayIdx = (now.getDay() + 6) % 7;
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - dayIdx);
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const focus = {};
+    for (const s of sets) {
+      const d = new Date(s.date);
+      if (d >= startOfWeek) {
+        focus[s.category] = (focus[s.category] || 0) + s.weight * s.reps;
+      }
+    }
+    return focus;
+  },
+
+  getConsistencyDays(days = 28) {
+    const sets = this.getAllSets().filter((s) => s.notes !== 'Startgewicht');
+    const trainedDates = new Set(sets.map((s) => s.date));
+    const result = [];
+    const today = new Date();
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const dateStr = getLocalDateStr(d);
+      result.push({ date: dateStr, trained: trainedDates.has(dateStr) });
+    }
+    return result;
   },
 };
