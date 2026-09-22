@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Fitness Tracker Vin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/styles.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -15,6 +18,33 @@
     <h1>Fitness Tracker <span class="accent">Vin</span></h1>
     <button id="syncBtn" class="sync-badge">⚪ Sync</button>
   </header>
+
+  <section class="dashboard">
+    <div class="dash-grid">
+      <div class="dash-tile">
+        <div class="dash-icon"></div>
+        <div class="dash-value" id="dashVolume">0kg</div>
+        <div class="dash-label">Volume deze week</div>
+      </div>
+      <div class="dash-tile">
+        <div class="dash-icon"></div>
+        <div class="dash-value" id="dashSets">0</div>
+        <div class="dash-label">Working sets</div>
+      </div>
+      <div class="dash-tile">
+        <div class="dash-icon"></div>
+        <div class="dash-value" id="dashDays">0</div>
+        <div class="dash-label">Trainingsdagen</div>
+      </div>
+    </div>
+    <div class="dash-progress">
+      <div class="dash-progress-label">
+        <span>Weekdoel</span>
+        <span id="dashProgressPct">0%</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="dashProgressFill"></div></div>
+    </div>
+  </section>
 
   <nav class="tabs">
     <button class="tab active" data-tab="log">Log</button>
@@ -38,6 +68,7 @@
 
       <div id="exerciseLogger">
         <div class="search-wrap">
+          <span class="search-icon"></span>
           <input id="exerciseSearch" type="text" placeholder="Zoek oefening..." autocomplete="off">
           <div id="searchResults" class="search-results"></div>
         </div>
@@ -79,18 +110,46 @@
         <canvas id="progressionCanvas" height="220"></canvas>
         <div id="progressionInsight"></div>
       </div>
+
       <div class="card">
         <h2>Deze week</h2>
         <canvas id="volumeCanvas" height="200"></canvas>
         <div id="weeklyStats" class="stats-row"></div>
       </div>
+
+      <div class="card">
+        <h2>Volume trend</h2>
+        <canvas id="volumeTrendCanvas" height="180"></canvas>
+      </div>
+
+      <div class="card">
+        <h2>Muscle group focus</h2>
+        <canvas id="muscleFocusCanvas" height="200"></canvas>
+        <p id="muscleFocusEmpty" class="muted hidden">Nog geen working sets deze week.</p>
+      </div>
+
+      <div class="card">
+        <h2>Consistency</h2>
+        <div id="consistencyCalendar" class="consistency-grid"></div>
+        <div class="consistency-legend">
+          <span><i class="dot on"></i> Getraind</span>
+          <span><i class="dot off"></i> Rust</span>
+        </div>
+      </div>
     </section>
 
     <section id="tab-history" class="tab-panel">
       <div class="card">
-        <h2>Personal Records</h2>
+        <h2>Top PR's</h2>
         <p class="muted small">Alleen working sets tellen mee.</p>
-        <div id="prList"></div>
+        <div id="prTopList"></div>
+      </div>
+      <div class="card" id="prExpandCard">
+        <button id="prExpandBtn" class="pr-expand-btn">
+          <span>Alle PR's</span>
+          <span class="icon"></span>
+        </button>
+        <div id="prRestList" class="hidden"></div>
       </div>
     </section>
 
@@ -126,6 +185,7 @@
   </main>
 </div>
 
+<script src="js/icons.js"></script>
 <script src="js/exercises-db.js"></script>
 <script src="js/storage.js"></script>
 <script src="js/sheets-sync.js"></script>
