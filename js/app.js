@@ -177,6 +177,14 @@ function renderMuscleFocus() {
   `).join('');
 }
 
+function fitDayTypeSelect(select) {
+  const cs = getComputedStyle(select);
+  const ctx = document.createElement('canvas').getContext('2d');
+  ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  const text = select.options[select.selectedIndex].text;
+  select.style.width = Math.ceil(ctx.measureText(text).width) + 30 + 'px';
+}
+
 function renderDayTypeSection() {
   const todayType = Storage.getDayType();
   state.type = todayType;
@@ -192,6 +200,8 @@ function renderDayTypeSection() {
     });
   }
   select.value = todayType;
+  fitDayTypeSelect(select);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitDayTypeSelect(select));
   const progress = Storage.getTodayExerciseProgress(todayType);
   el('mDayTypeProgress').textContent = `${progress.done} van ${progress.target} oefeningen`;
 }
