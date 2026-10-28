@@ -152,22 +152,8 @@ const TRAINING_TYPES = {
 
 const TRAINING_TYPE_ORDER = ['push', 'pull', 'legs', 'upper', 'lower'];
 
-// Vast weekschema: ma push, di pull, wo legs, do rust, vr upper, za lower, zo rust
-const WEEKLY_SCHEDULE = {
-  monday: 'push', tuesday: 'pull', wednesday: 'legs',
-  thursday: null, friday: 'upper', saturday: 'lower', sunday: null,
-};
-
 function getWeekdayKey(d = new Date()) {
   return WEEKDAY_ORDER[(d.getDay() + 6) % 7];
-}
-
-function getTodayScheduleType() {
-  return WEEKLY_SCHEDULE[getWeekdayKey()];
-}
-
-function isRestDay(dayKey) {
-  return WEEKLY_SCHEDULE[dayKey] === null;
 }
 
 // Richtgetal oefeningen per trainingstype, voor de "X van Y oefeningen" voortgang.

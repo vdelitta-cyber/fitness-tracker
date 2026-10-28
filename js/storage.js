@@ -7,6 +7,7 @@ const LS_KEYS = {
   seeded: 'ft_seeded_v1',
   syncQueue: 'ft_sync_queue',
   lastType: 'ft_last_type',
+  dayTypes: 'ft_day_types',
 };
 
 const STARTING_WEIGHTS = [
@@ -315,16 +316,40 @@ const Storage = {
     };
   },
 
-  // Streak "dagen op schema": rustdagen (do/zo) breken de streak niet, een
-  // gemiste trainingsdag wel. Vandaag telt zodra hij kwalificeert (rustdag of al getraind).
+  // Trainingstype per datum: door jou gekozen via de dropdown. Zonder keuze: de volgende
+  // in de rotatie (push, pull, legs, upper, lower) na de laatst gelogde sessie.
+  getDayType(dateStr = getLocalDateStr()) {
+    const stored = readJSON(LS_KEYS.dayTypes, {})[dateStr];
+    if (stored && TRAINING_TYPES[stored]) return stored;
+    const sets = this.getAllSets().filter((s) => s.notes !== 'Startgewicht' && s.date < dateStr);
+    if (sets.length === 0) return TRAINING_TYPE_ORDER[0];
+    const lastDate = sets.map((s) => s.date).sort().pop();
+    const lastLabel = sets.find((s) => s.date === lastDate).day;
+    const lastKey = TRAINING_TYPE_ORDER.find((k) => TRAINING_TYPES[k].label === lastLabel);
+    if (!lastKey) return TRAINING_TYPE_ORDER[0];
+    return TRAINING_TYPE_ORDER[(TRAINING_TYPE_ORDER.indexOf(lastKey) + 1) % TRAINING_TYPE_ORDER.length];
+  },
+
+  setDayType(type, dateStr = getLocalDateStr()) {
+    const map = readJSON(LS_KEYS.dayTypes, {});
+    map[dateStr] = type;
+    writeJSON(LS_KEYS.dayTypes, map);
+  },
+
+  // Streak: aaneengesloten trainingsdagen, met maximaal 2 rustdagen ertussen.
   getScheduleStreak() {
     const trainedDates = new Set(this.getAllSets().filter((s) => s.notes !== 'Startgewicht').map((s) => s.date));
-    let cursor = new Date();
-    const qualifies = (d) => isRestDay(getWeekdayKey(d)) || trainedDates.has(getLocalDateStr(d));
-    if (!qualifies(cursor)) cursor.setDate(cursor.getDate() - 1);
+    const cursor = new Date();
+    let gap = 0;
     let streak = 0;
-    while (qualifies(cursor)) {
-      streak += 1;
+    for (let i = 0; i < 400; i++) {
+      if (trainedDates.has(getLocalDateStr(cursor))) {
+        streak += 1;
+        gap = 0;
+      } else if (i > 0 || streak > 0) {
+        gap += 1;
+        if (gap > 2) break;
+      }
       cursor.setDate(cursor.getDate() - 1);
     }
     return streak;
@@ -333,7 +358,7 @@ const Storage = {
   // Working volume vandaag t.o.v. het gemiddelde van de laatste 4 sessies van hetzelfde dagtype, 1-10.
   getIntensityToday() {
     const todayStr = getLocalDateStr();
-    const todayType = getTodayScheduleType();
+    const todayType = this.getDayType();
     const workingSets = this.getAllSets().filter((s) => s.setType === 'working' && s.notes !== 'Startgewicht');
     const todayVolume = workingSets.filter((s) => s.date === todayStr).reduce((sum, s) => sum + s.weight * s.reps, 0);
 

@@ -110,23 +110,10 @@ function renderGauge() {
 }
 
 function getWeekPlanNote(weekly) {
-  const trainedDates = new Set(Object.keys(weekly.perDay));
-  const todayIdx = (new Date().getDay() + 6) % 7;
-  const remaining = [];
-  for (let i = todayIdx; i < 7; i++) {
-    const key = WEEKDAY_ORDER[i];
-    const type = WEEKLY_SCHEDULE[key];
-    if (!type) continue;
-    const d = new Date();
-    d.setDate(d.getDate() + (i - todayIdx));
-    if (!trainedDates.has(getLocalDateStr(d))) remaining.push({ key, type });
-  }
-  if (remaining.length === 0) return 'Elke geplande sessie deze week is voltooid.';
-  const next = remaining[0];
-  const label = TRAINING_TYPES[next.type].label;
-  const dayName = next.key === WEEKDAY_ORDER[todayIdx] ? 'Vandaag' : WEEKDAY_LABEL[next.key];
-  const sessionWord = remaining.length === 1 ? 'sessie' : 'sessies';
-  return `Nog ${remaining.length} ${sessionWord} voor een volle week. ${dayName} staat ${label} gepland.`;
+  const remaining = WEEKLY_TARGET_DAYS - Object.keys(weekly.perDay).length;
+  if (remaining <= 0) return 'Weekdoel gehaald.';
+  const sessionWord = remaining === 1 ? 'sessie' : 'sessies';
+  return `Nog ${remaining} ${sessionWord} voor een volle week.`;
 }
 
 function renderStats() {
@@ -191,20 +178,22 @@ function renderMuscleFocus() {
 }
 
 function renderDayTypeSection() {
-  const todayType = getTodayScheduleType();
+  const todayType = Storage.getDayType();
   state.type = todayType;
 
-  if (!todayType) {
-    el('dayTypeRow').classList.add('hidden');
-    el('restDayCard').classList.remove('hidden');
-  } else {
-    el('restDayCard').classList.add('hidden');
-    el('dayTypeRow').classList.remove('hidden');
-    const cfg = TRAINING_TYPES[todayType];
-    el('mDayTypeTitle').textContent = cfg.label;
-    const progress = Storage.getTodayExerciseProgress(todayType);
-    el('mDayTypeProgress').textContent = `${progress.done} van ${progress.target} oefeningen`;
+  const select = el('dayTypeSelect');
+  if (!select.options.length) {
+    select.innerHTML = TRAINING_TYPE_ORDER.map((k) => `<option value="${k}">${TRAINING_TYPES[k].label}</option>`).join('');
+    select.addEventListener('change', () => {
+      Storage.setDayType(select.value);
+      el('exerciseSearch').value = '';
+      el('searchResults').classList.remove('show');
+      renderTodayScreen();
+    });
   }
+  select.value = todayType;
+  const progress = Storage.getTodayExerciseProgress(todayType);
+  el('mDayTypeProgress').textContent = `${progress.done} van ${progress.target} oefeningen`;
 }
 
 // ---------- Zoeken ----------
