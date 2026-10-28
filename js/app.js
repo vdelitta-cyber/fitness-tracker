@@ -177,31 +177,47 @@ function renderMuscleFocus() {
   `).join('');
 }
 
-function fitDayTypeSelect(select) {
-  const cs = getComputedStyle(select);
-  const ctx = document.createElement('canvas').getContext('2d');
-  ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
-  const text = select.options[select.selectedIndex].text;
-  select.style.width = Math.ceil(ctx.measureText(text).width) + 30 + 'px';
+function setDayTypeMenuOpen(open) {
+  el('dayTypeMenu').hidden = !open;
+  el('dayTypeBtn').setAttribute('aria-expanded', String(open));
+}
+
+function bindDayTypeMenu() {
+  const btn = el('dayTypeBtn');
+  const menu = el('dayTypeMenu');
+  menu.innerHTML = TRAINING_TYPE_ORDER.map((k) =>
+    `<li role="option" class="m-dd-item" data-type="${k}" tabindex="-1">${TRAINING_TYPES[k].label}</li>`
+  ).join('');
+
+  btn.addEventListener('click', () => setDayTypeMenuOpen(menu.hidden));
+  menu.addEventListener('click', (e) => {
+    const item = e.target.closest('.m-dd-item');
+    if (!item) return;
+    setDayTypeMenuOpen(false);
+    Storage.setDayType(item.dataset.type);
+    el('exerciseSearch').value = '';
+    el('searchResults').classList.remove('show');
+    renderTodayScreen();
+  });
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#dayTypeDD')) setDayTypeMenuOpen(false);
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') setDayTypeMenuOpen(false);
+  });
 }
 
 function renderDayTypeSection() {
   const todayType = Storage.getDayType();
   state.type = todayType;
 
-  const select = el('dayTypeSelect');
-  if (!select.options.length) {
-    select.innerHTML = TRAINING_TYPE_ORDER.map((k) => `<option value="${k}">${TRAINING_TYPES[k].label}</option>`).join('');
-    select.addEventListener('change', () => {
-      Storage.setDayType(select.value);
-      el('exerciseSearch').value = '';
-      el('searchResults').classList.remove('show');
-      renderTodayScreen();
-    });
-  }
-  select.value = todayType;
-  fitDayTypeSelect(select);
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitDayTypeSelect(select));
+  if (!el('dayTypeMenu').children.length) bindDayTypeMenu();
+  el('dayTypeLabel').textContent = TRAINING_TYPES[todayType].label;
+  el('dayTypeMenu').querySelectorAll('.m-dd-item').forEach((li) => {
+    const selected = li.dataset.type === todayType;
+    li.classList.toggle('selected', selected);
+    li.setAttribute('aria-selected', String(selected));
+  });
   const progress = Storage.getTodayExerciseProgress(todayType);
   el('mDayTypeProgress').textContent = `${progress.done} van ${progress.target} oefeningen`;
 }
