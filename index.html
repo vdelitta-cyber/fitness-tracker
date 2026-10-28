@@ -84,8 +84,13 @@
       </section>
 
       <div id="dayTypeRow" class="m-daytype-row">
-        <label class="sr-only" for="dayTypeSelect">Trainingsdag</label>
-        <select id="dayTypeSelect" class="m-daytype-select"></select>
+        <div class="m-dd" id="dayTypeDD">
+          <button type="button" id="dayTypeBtn" class="m-dd-btn" aria-haspopup="listbox" aria-expanded="false" aria-label="Trainingsdag kiezen">
+            <span id="dayTypeLabel"></span>
+            <svg width="12" height="8" viewBox="0 0 12 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 1.5l5 5 5-5"></path></svg>
+          </button>
+          <ul id="dayTypeMenu" class="m-dd-menu" role="listbox" aria-label="Trainingsdag" hidden></ul>
+        </div>
         <span class="m-daytype-progress" id="mDayTypeProgress"></span>
       </div>
 
