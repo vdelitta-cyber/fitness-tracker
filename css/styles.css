@@ -262,6 +262,14 @@ main { padding: 0; }
   text-overflow: ellipsis;
   cursor: pointer;
 }
+.m-daytype-select { color-scheme: dark; }
+.m-daytype-select option {
+  background-color: #0B0A08;
+  color: var(--text);
+  font-family: var(--font-body, sans-serif);
+  font-size: 16px;
+}
+.m-daytype-select option:checked { background-color: #2A241E; color: var(--accent); }
 .m-daytype-select:focus-visible { outline: 1px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
 .m-daytype-progress { font-size: 13px; color: var(--text-secondary); white-space: nowrap; flex-shrink: 0; }
 
