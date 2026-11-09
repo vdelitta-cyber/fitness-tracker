@@ -88,6 +88,7 @@ function renderHeader() {
 function renderTodayScreen() {
   renderGauge();
   renderStats();
+  renderTopSet();
   renderQuote();
   renderIntensity();
   renderMuscleFocus();
@@ -177,6 +178,32 @@ function renderMuscleFocus() {
   `).join('');
 }
 
+// Zwaarste werkset van vandaag als geladen stang. Zonder sets vandaag: je zwaarste record.
+function renderTopSet() {
+  const today = getLocalDateStr();
+  const todayWorking = Storage.getSetsForDate(today)
+    .filter((s) => s.setType === 'working' && s.notes !== 'Startgewicht');
+
+  let top = null;
+  let label = 'Zwaarste werkset vandaag';
+  if (todayWorking.length) {
+    top = todayWorking.reduce((a, s) => (!a || s.weight > a.weight || (s.weight === a.weight && s.reps > a.reps) ? s : a), null);
+  } else {
+    const prs = Storage.getPRs().sort((a, b) => b.weight - a.weight);
+    if (prs.length) { top = prs[0]; label = 'Je zwaarste record'; }
+  }
+
+  const section = document.querySelector('.m-topset');
+  if (!top) { section.classList.add('hidden'); return; }
+  section.classList.remove('hidden');
+
+  el('mTopLabel').textContent = label;
+  el('mTopEx').textContent = top.exercise;
+  el('mTopKg').textContent = fmtWeight(top.weight);
+  el('mTopReps').textContent = top.reps ? `× ${top.reps} reps` : '';
+  el('mTopKey').textContent = Barbell.draw(el('mBarbell'), top.weight, Barbell.kindFor(top.exercise));
+}
+
 function setDayTypeMenuOpen(open) {
   el('dayTypeMenu').hidden = !open;
   el('dayTypeBtn').setAttribute('aria-expanded', String(open));
@@ -213,6 +240,7 @@ function renderDayTypeSection() {
 
   if (!el('dayTypeMenu').children.length) bindDayTypeMenu();
   el('dayTypeLabel').textContent = TRAINING_TYPES[todayType].label;
+  el('mSplit').textContent = TRAINING_TYPES[todayType].label.split(' ')[0];
   el('dayTypeMenu').querySelectorAll('.m-dd-item').forEach((li) => {
     const selected = li.dataset.type === todayType;
     li.classList.toggle('selected', selected);
@@ -332,6 +360,7 @@ function logCurrentSet() {
 
   renderGauge();
   renderStats();
+  renderTopSet();
   renderIntensity();
   renderMuscleFocus();
   if (state.type) {

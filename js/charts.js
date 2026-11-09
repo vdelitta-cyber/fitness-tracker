@@ -1,9 +1,9 @@
 // Chart.js rendering helpers (Chart.js geladen via CDN in index.html)
 
-const CHART_GRID = '#2E2720';
-const CHART_MUTED = '#A89F92';
-const CHART_ACCENT = '#C9A96E';
-const CHART_ACCENT_LIGHT = '#E0C48D';
+const CHART_GRID = '#262626';
+const CHART_MUTED = '#8a8a8a';
+const CHART_ACCENT = '#f5f5f5';
+const CHART_ACCENT_LIGHT = '#ffffff';
 
 const ChartsUI = {
   progressionChart: null,
@@ -22,9 +22,10 @@ const ChartsUI = {
           label: 'Gewicht (kg)',
           data,
           borderColor: CHART_ACCENT,
-          backgroundColor: 'rgba(201, 169, 110, 0.15)',
-          tension: 0.25,
-          pointRadius: 4,
+          backgroundColor: 'rgba(245, 245, 245, 0.08)',
+          tension: 0,
+          pointRadius: 3,
+          pointStyle: 'rect',
           pointBackgroundColor: CHART_ACCENT_LIGHT,
           fill: true,
         }],
@@ -73,7 +74,7 @@ const ChartsUI = {
           label: 'Volume (kg)',
           data,
           backgroundColor: CHART_ACCENT,
-          borderRadius: 4,
+          borderRadius: 0,
         }],
       },
       options: {
