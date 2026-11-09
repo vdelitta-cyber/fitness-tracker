@@ -2,7 +2,8 @@
 <html lang="nl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0E0C0A">
 <title>Fitness Tracker Vin</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -27,15 +28,25 @@
 
       <section class="m-hero">
         <div class="m-gauge-wrap">
-          <svg width="168" height="168" viewBox="0 0 168 168" aria-hidden="true">
-            <circle cx="84" cy="84" r="78" fill="#1C1814" stroke="#2E2720" stroke-width="1"></circle>
+          <svg width="168" height="168" viewBox="0 0 168 168" aria-hidden="true" class="m-gauge">
+            <defs>
+              <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#F0D9A6"></stop>
+                <stop offset="1" stop-color="#B8934F"></stop>
+              </linearGradient>
+              <radialGradient id="gaugeFace" cx="50%" cy="35%" r="75%">
+                <stop offset="0" stop-color="#241E18"></stop>
+                <stop offset="1" stop-color="#15110E"></stop>
+              </radialGradient>
+            </defs>
+            <circle cx="84" cy="84" r="78" fill="url(#gaugeFace)" stroke="#2E2720" stroke-width="1"></circle>
             <g stroke="#3A3128" stroke-width="1.5">
               <line x1="84" y1="10" x2="84" y2="18"></line><line x1="84" y1="150" x2="84" y2="158"></line><line x1="10" y1="84" x2="18" y2="84"></line><line x1="150" y1="84" x2="158" y2="84"></line>
               <line x1="121" y1="20" x2="117" y2="27"></line><line x1="148" y1="47" x2="141" y2="51"></line><line x1="148" y1="121" x2="141" y2="117"></line><line x1="121" y1="148" x2="117" y2="141"></line>
               <line x1="47" y1="148" x2="51" y2="141"></line><line x1="20" y1="121" x2="27" y2="117"></line><line x1="20" y1="47" x2="27" y2="51"></line><line x1="47" y1="20" x2="51" y2="27"></line>
             </g>
             <circle cx="84" cy="84" r="64" fill="none" stroke="#2A241E" stroke-width="6"></circle>
-            <circle cx="84" cy="84" r="64" fill="none" stroke="#C9A96E" stroke-width="6" stroke-linecap="round" id="mGaugeArc" stroke-dasharray="0 402.1" transform="rotate(-90 84 84)"></circle>
+            <circle cx="84" cy="84" r="64" fill="none" stroke="url(#gaugeGrad)" stroke-width="6" stroke-linecap="round" id="mGaugeArc" class="m-gauge-arc" stroke-dasharray="0 402.1" transform="rotate(-90 84 84)"></circle>
             <text x="84" y="92" text-anchor="middle" font-family="Cormorant Garamond, Georgia, serif" font-size="54" font-weight="600" fill="#F2EDE4" id="mStreakNum">0</text>
             <text x="84" y="114" text-anchor="middle" font-family="Manrope, sans-serif" font-size="11" fill="#A89F92">trainingen op rij</text>
           </svg>
