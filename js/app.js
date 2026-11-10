@@ -3,8 +3,12 @@
 const state = {
   type: null,
   selectedExercise: null,
-  lastWeight: '',
+  editingSetId: null,
+  historyShown: 8,
+  openSessions: new Set(),
 };
+
+const HISTORY_PAGE = 8;
 
 const el = (id) => document.getElementById(id);
 const WEEKLY_TARGET_DAYS = 5;
@@ -59,6 +63,9 @@ function init() {
   bindLogTab();
   bindSettingsTab();
   bindPRTab();
+  bindSetDialog();
+  bindAnalyticsTab();
+  RestTimer.bind();
 
   renderHeader();
   renderTodayScreen();
@@ -161,16 +168,21 @@ function renderMuscleFocus() {
   const emptyEl = el('mFocusEmpty');
   const summaryEl = el('mFocusSummary');
 
+  const bodyEl = el('mBody');
+
   if (!data.hasData) {
     barEl.classList.add('hidden');
     legendEl.classList.add('hidden');
+    bodyEl.classList.add('hidden');
     emptyEl.classList.remove('hidden');
     summaryEl.textContent = '';
     return;
   }
   barEl.classList.remove('hidden');
   legendEl.classList.remove('hidden');
+  bodyEl.classList.remove('hidden');
   emptyEl.classList.add('hidden');
+  renderBodyDiagram(bodyEl, Storage.getMuscleFocusDetailed());
   summaryEl.textContent = data.groups.map((g) => g.label).join(', ');
   barEl.innerHTML = data.groups.map((g) => `<div class="m-stacked-seg ${g.color}" style="width:${g.pct}%"></div>`).join('');
   legendEl.innerHTML = data.groups.map((g) => `
@@ -267,6 +279,24 @@ function bindLogTab() {
     e.preventDefault();
     logCurrentSet();
   });
+
+  document.querySelectorAll('.m-step').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const input = el(btn.dataset.target);
+      const step = parseFloat(btn.dataset.step);
+      const min = btn.dataset.target === 'repsInput' ? 1 : 0;
+      const next = Math.max(min, (parseFloat(input.value) || 0) + step);
+      input.value = Math.round(next * 100) / 100;
+    });
+  });
+
+  // Een set in de lijst aantikken opent het corrigeer-venster (ook in de historie).
+  document.addEventListener('click', (e) => {
+    const pill = e.target.closest('[data-set-id]');
+    if (!pill) return;
+    e.stopPropagation();
+    openSetDialog(pill.dataset.setId);
+  }, true);
 }
 
 function renderSearchResults(query) {
@@ -322,10 +352,29 @@ function selectExercise(exerciseId) {
   el('selectedExercisePanel').classList.remove('hidden');
   el('selectedExerciseName').textContent = ex.name;
 
-  if (state.lastWeight) el('weightInput').value = state.lastWeight;
-  el('repsInput').value = '';
+  // Vooraf invullen: je laatste set van vandaag, anders de beste set van de vorige keer.
+  const lastToday = Storage.getLastSetToday(ex.id);
+  const suggestion = Storage.getSuggestion(ex.id);
+  const base = lastToday || suggestion;
+  el('weightInput').value = base ? base.weight : '';
+  el('repsInput').value = base ? base.reps : '';
+  renderSuggestion(suggestion);
+
   el('logSetBtn').disabled = false;
-  el('weightInput').focus();
+  if (!base) el('weightInput').focus();
+}
+
+function renderSuggestion(s) {
+  const box = el('setSuggestion');
+  if (!s) {
+    box.classList.add('hidden');
+    return;
+  }
+  const source = s.isSeed ? 'Startgewicht' : `Vorige keer (${formatDateLong(s.date)})`;
+  const heavier = `${fmtWeight(s.weight + 2.5)} × ${Math.min(s.reps, 8)}`;
+  const target = s.reps >= 12 ? heavier : `${fmtWeight(s.weight)} × ${s.reps + 1} of ${heavier}`;
+  box.textContent = `${source}: ${fmtWeight(s.weight)} × ${s.reps}. Probeer ${target}.`;
+  box.classList.remove('hidden');
 }
 
 // ---------- Set loggen ----------
@@ -342,6 +391,9 @@ function logCurrentSet() {
     return;
   }
 
+  const bestBefore = Storage.getBestWeight(ex.id);
+  const isRecord = setType === 'working' && bestBefore !== null && weight > bestBefore;
+
   const cfg = state.type ? TRAINING_TYPES[state.type] : { label: 'Extra' };
   Storage.addSet({
     date: getLocalDateStr(),
@@ -354,9 +406,10 @@ function logCurrentSet() {
     setType,
   });
 
-  state.lastWeight = weight;
-  el('repsInput').value = '';
-  el('repsInput').focus();
+  // Gewicht en reps blijven staan voor de volgende set; het toetsenbord gaat dicht zodat de timer zichtbaar is.
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  if (isRecord) showPRToast(ex.name, weight);
+  RestTimer.start(Storage.getRestSeconds());
 
   renderGauge();
   renderStats();
@@ -396,11 +449,7 @@ function renderSessionSummary() {
     const maxToday = workingWeights.length ? Math.max(...workingWeights) : 0;
     const isNewPR = workingWeights.length > 0 && maxToday > prePR;
 
-    const chips = data.sets.map((s) => {
-      if (s.setType === 'warmup') return `<span class="set-pill warmup">${fmtWeight(s.weight)} × ${s.reps}</span>`;
-      if (isNewPR && s.weight === maxToday) return `<span class="set-pill pr">${fmtWeight(s.weight)} × ${s.reps}</span>`;
-      return `<span class="set-pill">${fmtWeight(s.weight)} × ${s.reps}</span>`;
-    });
+    const chips = data.sets.map((s) => setPill(s, isNewPR && s.setType === 'working' && s.weight === maxToday));
     chips.push(`<span class="set-pill next">set ${data.sets.length + 1}</span>`);
 
     const prev = Storage.getPreviousSession(exerciseId);
@@ -421,6 +470,184 @@ function renderSessionSummary() {
     card.addEventListener('click', () => selectExercise(card.dataset.id));
   });
 }
+
+// Een gelogde set als aantikbare chip; tikken opent het corrigeer-venster.
+function setPill(s, isPR = false) {
+  const cls = s.setType === 'warmup' ? ' warmup' : isPR ? ' pr' : '';
+  const kind = s.setType === 'warmup' ? 'warmup' : 'werkset';
+  return `<button type="button" class="set-pill${cls}" data-set-id="${s.id}" aria-label="${fmtWeight(s.weight)} kg keer ${s.reps}, ${kind}. Wijzigen of verwijderen">${fmtWeight(s.weight)} × ${s.reps}</button>`;
+}
+
+// ---------- Set wijzigen of verwijderen ----------
+
+function bindSetDialog() {
+  const dialog = el('setDialog');
+  el('setDialogCancel').addEventListener('click', () => dialog.close());
+  dialog.addEventListener('click', (e) => {
+    if (e.target === dialog) dialog.close();
+  });
+
+  el('setDialogSave').addEventListener('click', () => {
+    const weight = parseFloat(el('editWeight').value);
+    const reps = parseInt(el('editReps').value, 10);
+    if (isNaN(weight) || weight <= 0 || isNaN(reps) || reps <= 0) {
+      el('setDialogNote').textContent = 'Vul een geldig gewicht en aantal reps in.';
+      return;
+    }
+    const setType = document.querySelector('input[name="editType"]:checked').value;
+    Storage.updateSet(state.editingSetId, { weight, reps, setType });
+    dialog.close();
+    refreshAfterDataChange();
+  });
+
+  // Verwijderen vraagt een tweede tik als bevestiging.
+  el('setDialogDelete').addEventListener('click', (e) => {
+    if (e.currentTarget.dataset.armed !== 'true') {
+      e.currentTarget.dataset.armed = 'true';
+      e.currentTarget.textContent = 'Zeker weten?';
+      return;
+    }
+    Storage.deleteSet(state.editingSetId);
+    dialog.close();
+    refreshAfterDataChange();
+  });
+}
+
+function openSetDialog(setId) {
+  const s = Storage.getSetById(setId);
+  if (!s) return;
+  state.editingSetId = setId;
+  el('setDialogTitle').textContent = s.exercise;
+  el('setDialogMeta').textContent = `${formatDateLong(s.date)} · ${s.day}`;
+  el('editWeight').value = s.weight;
+  el('editReps').value = s.reps;
+  document.querySelector(`input[name="editType"][value="${s.setType}"]`).checked = true;
+
+  const synced = SheetsSync.getSpreadsheetId() && !Storage.isQueuedForSync(setId);
+  el('setDialogNote').textContent = synced
+    ? 'Deze set staat mogelijk al in je Google Sheet. Daar wordt hij niet aangepast of verwijderd.'
+    : '';
+
+  const del = el('setDialogDelete');
+  del.dataset.armed = 'false';
+  del.textContent = 'Verwijderen';
+  el('setDialog').showModal();
+}
+
+function refreshAfterDataChange() {
+  renderTodayScreen();
+  if (state.selectedExercise) renderSuggestion(Storage.getSuggestion(state.selectedExercise.id));
+  if (el('tab-analytics').classList.contains('active')) renderAnalyticsTab();
+  if (el('tab-history').classList.contains('active')) renderPRTab();
+}
+
+// ---------- Nieuw record ----------
+
+function showPRToast(exerciseName, weight) {
+  const toast = el('prToast');
+  el('prToastKg').textContent = `${fmtWeight(weight)} kg`;
+  el('prToastEx').textContent = exerciseName;
+  toast.classList.remove('hidden', 'show');
+  void toast.offsetWidth; // herstart de animatie
+  toast.classList.add('show');
+  if (navigator.vibrate) navigator.vibrate([80, 60, 80, 60, 200]);
+  clearTimeout(showPRToast.timer);
+  showPRToast.timer = setTimeout(() => toast.classList.add('hidden'), 3200);
+}
+
+// ---------- Rusttimer ----------
+
+const RestTimer = {
+  endAt: 0,
+  total: 0,
+  interval: null,
+  hideTimer: null,
+  audio: null,
+
+  bind() {
+    el('restMinus').addEventListener('click', () => this.adjust(-15));
+    el('restPlus').addEventListener('click', () => this.adjust(15));
+    el('restStop').addEventListener('click', () => this.stop());
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && this.interval) this.tick();
+    });
+  },
+
+  // Geluid mag pas na een tik van de gebruiker; start() wordt vanuit "Set loggen" aangeroepen.
+  unlockAudio() {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      if (!this.audio) this.audio = new Ctx();
+      if (this.audio.state === 'suspended') this.audio.resume();
+    } catch (e) {}
+  },
+
+  start(seconds) {
+    if (!seconds) return;
+    this.unlockAudio();
+    clearTimeout(this.hideTimer);
+    clearInterval(this.interval);
+    this.total = seconds;
+    this.endAt = Date.now() + seconds * 1000;
+    el('restBar').classList.remove('hidden', 'done');
+    el('restLabel').textContent = 'Rust';
+    this.interval = setInterval(() => this.tick(), 250);
+    this.tick();
+  },
+
+  adjust(delta) {
+    if (!this.interval) return;
+    this.endAt += delta * 1000;
+    this.total = Math.max(this.total + delta, 1);
+    this.tick();
+  },
+
+  stop() {
+    clearInterval(this.interval);
+    clearTimeout(this.hideTimer);
+    this.interval = null;
+    el('restBar').classList.add('hidden');
+  },
+
+  tick() {
+    const left = Math.ceil((this.endAt - Date.now()) / 1000);
+    if (left <= 0) {
+      this.finish();
+      return;
+    }
+    el('restTime').textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+    const pct = Math.max(0, Math.min(100, (left / this.total) * 100));
+    el('restProgress').style.width = pct + '%';
+  },
+
+  finish() {
+    clearInterval(this.interval);
+    this.interval = null;
+    el('restBar').classList.add('done');
+    el('restLabel').textContent = 'Rust voorbij';
+    el('restTime').textContent = '0:00';
+    el('restProgress').style.width = '0%';
+    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+    this.beep();
+    this.hideTimer = setTimeout(() => el('restBar').classList.add('hidden'), 6000);
+  },
+
+  beep() {
+    if (!this.audio || this.audio.state !== 'running') return;
+    try {
+      [0, 0.25, 0.5].forEach((offset) => {
+        const osc = this.audio.createOscillator();
+        const gain = this.audio.createGain();
+        osc.frequency.value = 880;
+        gain.gain.value = 0.15;
+        osc.connect(gain).connect(this.audio.destination);
+        osc.start(this.audio.currentTime + offset);
+        osc.stop(this.audio.currentTime + offset + 0.15);
+      });
+    } catch (e) {}
+  },
+};
 
 // ---------- Tabs ----------
 
@@ -474,22 +701,163 @@ function renderAnalyticsTab() {
     <div class="stat"><span class="stat-value">${Object.keys(weekly.perDay).length}</span><span class="stat-label">Trainingsdagen</span></div>
   `;
 
+  renderWeekCompare();
   renderConsistencyCalendar();
+  renderBodyweight();
+  renderHistory();
+}
+
+function bindAnalyticsTab() {
+  el('bwForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const kg = parseFloat(el('bwInput').value);
+    if (isNaN(kg) || kg < 20 || kg > 400) return;
+    Storage.saveBodyweight(Math.round(kg * 10) / 10);
+    el('bwInput').value = '';
+    renderBodyweight();
+  });
+  el('bwDeleteLast').addEventListener('click', () => {
+    const list = Storage.getBodyweights();
+    if (!list.length) return;
+    Storage.deleteBodyweight(list[list.length - 1].date);
+    renderBodyweight();
+  });
+
+  el('historyMore').addEventListener('click', () => {
+    state.historyShown += HISTORY_PAGE;
+    renderHistory();
+  });
+  el('historyList').addEventListener('toggle', (e) => {
+    const date = e.target.dataset && e.target.dataset.date;
+    if (!date) return;
+    if (e.target.open) state.openSessions.add(date);
+    else state.openSessions.delete(date);
+  }, true);
+
+  // Een getrainde dag in de kalender aantikken opent die sessie in de historie.
+  el('consistencyCalendar').addEventListener('click', (e) => {
+    const box = e.target.closest('button[data-date]');
+    if (!box) return;
+    const sessions = Storage.getSessions();
+    const idx = sessions.findIndex((s) => s.date === box.dataset.date);
+    if (idx === -1) return;
+    state.historyShown = Math.max(state.historyShown, idx + 1);
+    state.openSessions.add(box.dataset.date);
+    renderHistory();
+    const target = el('historyList').querySelector(`details[data-date="${box.dataset.date}"]`);
+    if (target) target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  });
+}
+
+// Deze week tegenover heel vorige week: volume, sets en verbroken records.
+function renderWeekCompare() {
+  const cmp = Storage.getWeekComparison();
+  const prs = Storage.getWeekPRCounts();
+  const delta = (cur, prev, pct) => {
+    if (prev === 0) return cur > 0 ? 'vorige week niets' : 'nog niets';
+    if (pct === 0) return 'gelijk';
+    return `${pct > 0 ? '▲' : '▼'} ${Math.abs(pct)}%`;
+  };
+  el('weekCompare').innerHTML = `
+    <div class="stat"><span class="stat-value">${Math.round(cmp.thisWeek.volume).toLocaleString('nl-NL')}</span><span class="stat-label">kg volume</span><span class="stat-delta">${delta(cmp.thisWeek.volume, cmp.lastWeek.volume, cmp.volumeChangePct)}</span></div>
+    <div class="stat"><span class="stat-value">${cmp.thisWeek.sets}</span><span class="stat-label">Working sets</span><span class="stat-delta">${delta(cmp.thisWeek.sets, cmp.lastWeek.sets, cmp.setsChangePct)}</span></div>
+    <div class="stat"><span class="stat-value">${prs.thisWeek}</span><span class="stat-label">Records</span><span class="stat-delta">vorige week ${prs.lastWeek}</span></div>
+  `;
 }
 
 function renderConsistencyCalendar() {
   const days = Storage.getConsistencyDays(35);
   el('consistencyCalendar').innerHTML = days.map((d) => {
-    const label = new Date(d.date).toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit' });
-    return `<div class="m-consistency-box ${d.trained ? 'on' : ''}" title="${label}"></div>`;
+    const label = formatDateLong(d.date);
+    return d.trained
+      ? `<button type="button" class="m-consistency-box on" data-date="${d.date}" aria-label="${label}, getraind. Toon sessie" title="${label}"></button>`
+      : `<div class="m-consistency-box" title="${label}"></div>`;
+  }).join('');
+}
+
+function renderBodyweight() {
+  const list = Storage.getBodyweights();
+  const canvas = el('bwCanvas');
+  const empty = el('bwEmpty');
+  el('bwDeleteLast').classList.toggle('hidden', list.length === 0);
+
+  if (list.length === 0) {
+    el('bwSummary').textContent = '';
+    canvas.classList.add('hidden');
+    empty.textContent = 'Nog geen metingen. Vul je gewicht in om het bij te houden.';
+    empty.classList.remove('hidden');
+    return;
+  }
+
+  const last = list[list.length - 1];
+  const first = list[0];
+  const diff = Math.round((last.kg - first.kg) * 10) / 10;
+  el('bwSummary').textContent = `${fmtWeight(last.kg)} kg · ${formatDateLong(last.date)}`;
+
+  if (list.length < 2) {
+    canvas.classList.add('hidden');
+    empty.textContent = 'Eén meting. Vanaf twee metingen verschijnt hier een grafiek.';
+    empty.classList.remove('hidden');
+    return;
+  }
+  canvas.classList.remove('hidden');
+  const sign = diff > 0 ? '+' : diff < 0 ? '−' : '';
+  empty.textContent = `${sign}${fmtWeight(Math.abs(diff))} kg sinds ${formatDateLong(first.date)}.`;
+  empty.classList.remove('hidden');
+  ChartsUI.renderBodyweight(canvas, list);
+}
+
+function renderHistory() {
+  const sessions = Storage.getSessions();
+  const box = el('historyList');
+  el('historyEmpty').classList.toggle('hidden', sessions.length > 0);
+  el('historyCount').textContent = sessions.length ? `${sessions.length} ${sessions.length === 1 ? 'training' : 'trainingen'}` : '';
+  el('historyMore').classList.toggle('hidden', sessions.length <= state.historyShown);
+
+  box.innerHTML = sessions.slice(0, state.historyShown).map((sess) => {
+    const d = new Date(sess.date);
+    const weekday = d.toLocaleDateString('nl-NL', { weekday: 'short' }).replace('.', '');
+    const byExercise = {};
+    for (const s of sess.sets) {
+      (byExercise[s.exerciseId] = byExercise[s.exerciseId] || { name: s.exercise, sets: [] }).sets.push(s);
+    }
+    const rows = Object.values(byExercise).map((ex) => `
+      <div class="m-history-ex">
+        <span class="m-history-ex-name">${ex.name}</span>
+        <div class="exercise-card-sets">${ex.sets.map((s) => setPill(s)).join('')}</div>
+      </div>`).join('');
+    return `
+    <details class="m-session" data-date="${sess.date}" ${state.openSessions.has(sess.date) ? 'open' : ''}>
+      <summary>
+        <span class="m-session-date">${weekday} ${formatDateLong(sess.date)}</span>
+        <span class="m-session-type">${sess.day}</span>
+        <span class="m-session-meta">${sess.workingSets} sets · ${Math.round(sess.volume).toLocaleString('nl-NL')} kg</span>
+      </summary>
+      <div class="m-session-body">${rows}</div>
+    </details>`;
   }).join('');
 }
 
 function renderProgressionFor(exerciseId) {
   const sets = Storage.getWorkingSets(exerciseId);
   if (sets.length === 0) return;
-  ChartsUI.renderProgression(el('progressionCanvas'), sets);
-  el('progressionInsight').innerHTML = buildInsight(sets);
+
+  // Eén punt per training: topgewicht en hoogste geschatte 1RM van die dag.
+  const byDate = {};
+  for (const s of sets) {
+    const d = byDate[s.date] = byDate[s.date] || { date: s.date, weight: 0, reps: 0, e1rm: 0 };
+    if (s.weight > d.weight || (s.weight === d.weight && s.reps > d.reps)) {
+      d.weight = s.weight;
+      d.reps = s.reps;
+    }
+    d.e1rm = Math.max(d.e1rm, e1rm(s.weight, s.reps));
+  }
+  const sessions = Object.values(byDate).sort((a, b) => a.date.localeCompare(b.date));
+
+  ChartsUI.renderProgression(el('progressionCanvas'), sessions);
+  const best = Math.max(...sessions.map((d) => d.e1rm));
+  el('progressionInsight').innerHTML = buildInsight(sets)
+    + `<p class="insight">Geschatte 1RM: ${fmtWeight(best)} kg (berekend uit gewicht en reps).</p>`;
 }
 
 function buildInsight(sets) {
@@ -554,7 +922,7 @@ function renderPRTab() {
     <div class="m-pr-featured">
       <div>
         <div class="m-pr-name">${pr.exercise}</div>
-        <div class="m-pr-meta">${CATEGORY_LABELS[pr.category] || ''} · ${formatDateLong(pr.date)}</div>
+        <div class="m-pr-meta">${CATEGORY_LABELS[pr.category] || ''} · ${formatDateLong(pr.date)} · 1RM ca. ${fmtWeight(pr.e1rm)} kg</div>
       </div>
       <div class="m-pr-value">${fmtWeight(pr.weight)}<span class="unit">kg</span><span class="reps">× ${pr.reps}</span></div>
     </div>
@@ -580,6 +948,61 @@ function bindSettingsTab() {
     renderSettingsTab();
   });
   el('connectSyncBtn').addEventListener('click', () => SheetsSync.connect());
+
+  el('restSelect').value = String(Storage.getRestSeconds());
+  el('restSelect').addEventListener('change', (e) => Storage.setRestSeconds(parseInt(e.target.value, 10)));
+
+  el('exportBtn').addEventListener('click', exportBackup);
+  el('importBtn').addEventListener('click', () => el('importFile').click());
+  el('importFile').addEventListener('change', importBackup);
+}
+
+async function exportBackup() {
+  const data = Storage.exportData();
+  const name = `fitness-tracker-backup-${getLocalDateStr()}.json`;
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const status = el('backupStatus');
+  const count = data.sets.filter((s) => s.notes !== 'Startgewicht').length;
+
+  // Op iPhone werkt het deelmenu (Bewaar in Bestanden) betrouwbaarder dan een download.
+  const file = new File([blob], name, { type: 'application/json' });
+  if (navigator.canShare && navigator.canShare({ files: [file] }) && matchMedia('(pointer: coarse)').matches) {
+    try {
+      await navigator.share({ files: [file], title: name });
+      status.textContent = `Back-up met ${count} sets gedeeld.`;
+      return;
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+    }
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  status.textContent = `Back-up met ${count} sets opgeslagen als ${name}.`;
+}
+
+async function importBackup(e) {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  const status = el('backupStatus');
+  try {
+    const result = Storage.importData(JSON.parse(await file.text()));
+    const parts = [`${result.added} sets toegevoegd`];
+    if (result.skipped) parts.push(`${result.skipped} overgeslagen (stonden er al of waren ongeldig)`);
+    if (result.weights) parts.push(`${result.weights} gewichtsmetingen toegevoegd`);
+    status.textContent = parts.join(', ') + '.';
+    renderTodayScreen();
+  } catch (err) {
+    status.textContent = err instanceof SyntaxError
+      ? 'Importeren mislukt: het bestand is geen geldige JSON.'
+      : `Importeren mislukt: ${err.message}`;
+  }
 }
 
 function renderSettingsTab() {

@@ -8,7 +8,11 @@ const LS_KEYS = {
   syncQueue: 'ft_sync_queue',
   lastType: 'ft_last_type',
   dayTypes: 'ft_day_types',
+  bodyweight: 'ft_bodyweight',
+  restSeconds: 'ft_rest_seconds',
 };
+
+const BACKUP_APP_ID = 'fitness-tracker-vin';
 
 const STARTING_WEIGHTS = [
   { exerciseId: 'chest_barbell_bench_press', weight: 100, reps: 5, type: 'push' },
@@ -97,12 +101,16 @@ const Storage = {
   getPRs() {
     const sets = this.getAllSets().filter((s) => s.setType === 'working');
     const prMap = {};
+    const bestE1rm = {};
     for (const s of sets) {
       if (!prMap[s.exerciseId] || s.weight > prMap[s.exerciseId].weight) {
         prMap[s.exerciseId] = { exerciseId: s.exerciseId, exercise: s.exercise, category: s.category, weight: s.weight, reps: s.reps, date: s.date };
       }
+      bestE1rm[s.exerciseId] = Math.max(bestE1rm[s.exerciseId] || 0, e1rm(s.weight, s.reps));
     }
-    return Object.values(prMap).sort((a, b) => b.date.localeCompare(a.date));
+    return Object.values(prMap)
+      .map((pr) => ({ ...pr, e1rm: bestE1rm[pr.exerciseId] }))
+      .sort((a, b) => b.date.localeCompare(a.date));
   },
 
   getWeeklyVolume() {
@@ -421,4 +429,239 @@ const Storage = {
     const sets = this.getAllSets().filter((s) => s.exerciseId === exerciseId && s.setType === 'working' && s.date < dateStr);
     return sets.length === 0 ? 0 : Math.max(...sets.map((s) => s.weight));
   },
+
+  // ---------- Sets corrigeren ----------
+
+  // Verwijdert een set. Een al gesyncte rij in de Google Sheet blijft daar staan.
+  deleteSet(id) {
+    const sets = this.getAllSets();
+    const target = sets.find((s) => s.id === id);
+    if (!target) return false;
+    this.saveAllSets(sets.filter((s) => s.id !== id));
+    writeJSON(LS_KEYS.syncQueue, readJSON(LS_KEYS.syncQueue, []).filter((q) => q !== id));
+    const usage = this.getUsage();
+    if (usage[target.exerciseId] > 0) {
+      usage[target.exerciseId] -= 1;
+      writeJSON(LS_KEYS.usage, usage);
+    }
+    return true;
+  },
+
+  updateSet(id, patch) {
+    const sets = this.getAllSets();
+    const target = sets.find((s) => s.id === id);
+    if (!target) return false;
+    target.weight = patch.weight;
+    target.reps = patch.reps;
+    target.setType = patch.setType;
+    this.saveAllSets(sets);
+    return true;
+  },
+
+  getSetById(id) {
+    return this.getAllSets().find((s) => s.id === id) || null;
+  },
+
+  isQueuedForSync(id) {
+    return readJSON(LS_KEYS.syncQueue, []).includes(id);
+  },
+
+  // Zwaarste werkset ooit voor deze oefening (inclusief startgewicht), of null.
+  getBestWeight(exerciseId) {
+    const weights = this.getAllSets()
+      .filter((s) => s.exerciseId === exerciseId && s.setType === 'working')
+      .map((s) => s.weight);
+    return weights.length ? Math.max(...weights) : null;
+  },
+
+  // ---------- Vooraf invullen en suggestie ----------
+
+  getLastSetToday(exerciseId) {
+    const sets = this.getSetsForDate(getLocalDateStr()).filter((s) => s.exerciseId === exerciseId && s.notes !== 'Startgewicht');
+    return sets.length ? sets[sets.length - 1] : null;
+  },
+
+  // Beste werkset van de vorige sessie (niet vandaag): hoogste gewicht, meeste reps op dat gewicht.
+  getSuggestion(exerciseId) {
+    const todayStr = getLocalDateStr();
+    const sets = this.getAllSets().filter((s) => s.exerciseId === exerciseId && s.setType === 'working'
+      && (s.date !== todayStr || s.notes === 'Startgewicht'));
+    if (sets.length === 0) return null;
+    const real = sets.filter((s) => s.notes !== 'Startgewicht');
+    const pool = real.length ? real : sets;
+    const lastDate = pool.map((s) => s.date).sort().pop();
+    const daySets = pool.filter((s) => s.date === lastDate);
+    const weight = Math.max(...daySets.map((s) => s.weight));
+    const reps = Math.max(...daySets.filter((s) => s.weight === weight).map((s) => s.reps));
+    return { date: lastDate, weight, reps, isSeed: real.length === 0 };
+  },
+
+  // ---------- Historie ----------
+
+  // Alle trainingsdagen, nieuwste eerst.
+  getSessions() {
+    const byDate = {};
+    for (const s of this.getAllSets()) {
+      if (s.notes === 'Startgewicht') continue;
+      const d = byDate[s.date] = byDate[s.date] || { date: s.date, day: s.day, sets: [], volume: 0, workingSets: 0 };
+      d.sets.push(s);
+      if (s.setType === 'working') {
+        d.volume += s.weight * s.reps;
+        d.workingSets += 1;
+      }
+    }
+    return Object.values(byDate)
+      .map((d) => ({ ...d, sets: d.sets.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)) }))
+      .sort((a, b) => b.date.localeCompare(a.date));
+  },
+
+  // Aantal verbroken records deze week en vorige week. De eerste set van een oefening telt niet.
+  getWeekPRCounts() {
+    const sets = this.getAllSets()
+      .filter((s) => s.setType === 'working')
+      .sort((a, b) => a.date.localeCompare(b.date) || new Date(a.createdAt) - new Date(b.createdAt));
+    const now = new Date();
+    const thisStart = new Date(now);
+    thisStart.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+    thisStart.setHours(0, 0, 0, 0);
+    const lastStart = new Date(thisStart);
+    lastStart.setDate(thisStart.getDate() - 7);
+
+    const best = {};
+    const counts = { thisWeek: 0, lastWeek: 0 };
+    for (const s of sets) {
+      const prev = best[s.exerciseId];
+      if (prev !== undefined && s.weight > prev && s.notes !== 'Startgewicht') {
+        const d = new Date(s.date);
+        if (d >= thisStart) counts.thisWeek += 1;
+        else if (d >= lastStart) counts.lastWeek += 1;
+      }
+      if (prev === undefined || s.weight > prev) best[s.exerciseId] = s.weight;
+    }
+    return counts;
+  },
+
+  // Volume per spiergroep deze week, met benen gesplitst in voorkant (quad) en achterkant (glute/hamstring).
+  getMuscleFocusDetailed() {
+    const sets = this.getAllSets().filter((s) => s.setType === 'working' && s.notes !== 'Startgewicht');
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const focus = {};
+    for (const s of sets) {
+      if (new Date(s.date) < startOfWeek) continue;
+      let key = s.category;
+      if (key === 'legs') {
+        const ex = EXERCISES.find((e) => e.id === s.exerciseId);
+        key = ex && ex.focus === 'glute' ? 'legs_glute' : 'legs_quad';
+      }
+      focus[key] = (focus[key] || 0) + s.weight * s.reps;
+    }
+    return focus;
+  },
+
+  // ---------- Lichaamsgewicht ----------
+
+  // [{ date, kg }], oudste eerst, één meting per dag.
+  getBodyweights() {
+    return readJSON(LS_KEYS.bodyweight, []).sort((a, b) => a.date.localeCompare(b.date));
+  },
+
+  saveBodyweight(kg, dateStr = getLocalDateStr()) {
+    const list = this.getBodyweights().filter((b) => b.date !== dateStr);
+    list.push({ date: dateStr, kg });
+    writeJSON(LS_KEYS.bodyweight, list);
+  },
+
+  deleteBodyweight(dateStr) {
+    writeJSON(LS_KEYS.bodyweight, this.getBodyweights().filter((b) => b.date !== dateStr));
+  },
+
+  // ---------- Rusttimer ----------
+
+  // Seconden rust na een gelogde set; 0 = uit.
+  getRestSeconds() {
+    const raw = localStorage.getItem(LS_KEYS.restSeconds);
+    const n = raw === null ? 120 : parseInt(raw, 10);
+    return Number.isFinite(n) && n >= 0 ? n : 120;
+  },
+
+  setRestSeconds(seconds) {
+    localStorage.setItem(LS_KEYS.restSeconds, String(seconds));
+  },
+
+  // ---------- Back-up ----------
+
+  exportData() {
+    return {
+      app: BACKUP_APP_ID,
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      sets: this.getAllSets(),
+      usage: this.getUsage(),
+      dayTypes: readJSON(LS_KEYS.dayTypes, {}),
+      bodyweight: this.getBodyweights(),
+      restSeconds: this.getRestSeconds(),
+    };
+  },
+
+  // Voegt een back-up samen met wat er al staat. Bestaande sets en metingen blijven ongemoeid;
+  // geïmporteerde sets gaan niet opnieuw naar de Google Sheet.
+  importData(data) {
+    if (!data || data.app !== BACKUP_APP_ID || !Array.isArray(data.sets)) {
+      throw new Error('Dit is geen back-up van deze tracker.');
+    }
+    const valid = data.sets.filter((s) => s && typeof s.id === 'string' && typeof s.date === 'string'
+      && /^\d{4}-\d{2}-\d{2}$/.test(s.date) && typeof s.exerciseId === 'string'
+      && Number.isFinite(s.weight) && Number.isFinite(s.reps)
+      && (s.setType === 'working' || s.setType === 'warmup'));
+
+    const sets = this.getAllSets();
+    const known = new Set(sets.map((s) => s.id));
+    const usage = this.getUsage();
+    let added = 0;
+    for (const s of valid) {
+      if (known.has(s.id)) continue;
+      known.add(s.id);
+      sets.push({
+        id: s.id, date: s.date, day: String(s.day || ''), exerciseId: s.exerciseId, exercise: String(s.exercise || s.exerciseId),
+        category: String(s.category || ''), weight: s.weight, reps: s.reps, setType: s.setType,
+        notes: String(s.notes || ''), createdAt: String(s.createdAt || s.date),
+      });
+      if (s.notes !== 'Startgewicht') usage[s.exerciseId] = (usage[s.exerciseId] || 0) + 1;
+      added += 1;
+    }
+    this.saveAllSets(sets);
+    writeJSON(LS_KEYS.usage, usage);
+    if (sets.some((s) => s.notes === 'Startgewicht')) writeJSON(LS_KEYS.seeded, true);
+
+    if (data.dayTypes && typeof data.dayTypes === 'object') {
+      const map = readJSON(LS_KEYS.dayTypes, {});
+      for (const [date, type] of Object.entries(data.dayTypes)) {
+        if (!map[date] && TRAINING_TYPES[type]) map[date] = type;
+      }
+      writeJSON(LS_KEYS.dayTypes, map);
+    }
+
+    let weights = 0;
+    if (Array.isArray(data.bodyweight)) {
+      const list = this.getBodyweights();
+      const dates = new Set(list.map((b) => b.date));
+      for (const b of data.bodyweight) {
+        if (!b || dates.has(b.date) || !/^\d{4}-\d{2}-\d{2}$/.test(b.date) || !Number.isFinite(b.kg)) continue;
+        dates.add(b.date);
+        list.push({ date: b.date, kg: b.kg });
+        weights += 1;
+      }
+      writeJSON(LS_KEYS.bodyweight, list);
+    }
+    return { added, skipped: data.sets.length - added, weights };
+  },
 };
+
+// Geschatte 1RM volgens Epley.
+function e1rm(weight, reps) {
+  return reps <= 1 ? weight : weight * (1 + reps / 30);
+}
