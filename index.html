@@ -8,7 +8,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet">
 <meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="css/styles.css?v=20261110">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<meta name="apple-mobile-web-app-title" content="Tracker">
+<link rel="stylesheet" href="css/styles.css?v=20261110b">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script></head>
 <body>
 <div id="app">
@@ -95,6 +99,7 @@
         </div>
         <div class="m-stacked-bar" id="mStackedBar"></div>
         <div class="m-legend" id="mLegend"></div>
+        <div class="m-body hidden" id="mBody"></div>
         <p class="m-empty hidden" id="mFocusEmpty">Nog geen working sets deze week.</p>
       </section>
 
@@ -121,15 +126,22 @@
 
         <div id="selectedExercisePanel" class="m-input-panel hidden">
           <div class="m-input-panel-name" id="selectedExerciseName"></div>
+          <p class="m-suggest hidden" id="setSuggestion"></p>
           <form id="setForm">
-            <div class="m-input-row">
-              <div class="m-field">
-                <label for="weightInput">Gewicht (kg)</label>
-                <input id="weightInput" type="number" step="0.5" min="0" inputmode="decimal" required>
+            <div class="m-field">
+              <label for="weightInput">Gewicht (kg)</label>
+              <div class="m-stepper">
+                <button type="button" class="m-step" data-target="weightInput" data-step="-2.5" aria-label="2,5 kg minder">−2,5</button>
+                <input id="weightInput" type="number" step="0.25" min="0" inputmode="decimal" required>
+                <button type="button" class="m-step" data-target="weightInput" data-step="2.5" aria-label="2,5 kg meer">+2,5</button>
               </div>
-              <div class="m-field">
-                <label for="repsInput">Reps</label>
+            </div>
+            <div class="m-field">
+              <label for="repsInput">Reps</label>
+              <div class="m-stepper">
+                <button type="button" class="m-step" data-target="repsInput" data-step="-1" aria-label="1 rep minder">−1</button>
                 <input id="repsInput" type="number" step="1" min="1" inputmode="numeric" required>
+                <button type="button" class="m-step" data-target="repsInput" data-step="1" aria-label="1 rep meer">+1</button>
               </div>
             </div>
             <div class="m-toggle-row">
@@ -149,6 +161,14 @@
     <!-- ===== ANALYSE ===== -->
     <section id="tab-analytics" class="tab-panel">
       <header class="m-screen-header"><h1>Analyse</h1></header>
+
+      <section class="m-card">
+        <div class="m-card-row">
+          <span class="m-card-title">Deze week</span>
+          <span class="m-card-sub">t.o.v. heel vorige week</span>
+        </div>
+        <div id="weekCompare" class="m-stats-row"></div>
+      </section>
 
       <section class="m-card">
         <div class="m-card-row"><span class="m-card-title">Progressie per oefening</span></div>
@@ -172,6 +192,31 @@
           <span><i class="m-dot off"></i> Rust</span>
         </div>
       </section>
+
+      <section class="m-card">
+        <div class="m-card-row">
+          <span class="m-card-title">Lichaamsgewicht</span>
+          <span class="m-card-sub" id="bwSummary"></span>
+        </div>
+        <form id="bwForm" class="m-inline-form">
+          <label class="sr-only" for="bwInput">Lichaamsgewicht vandaag in kg</label>
+          <input id="bwInput" class="m-text-input" type="number" step="0.1" min="20" max="400" inputmode="decimal" placeholder="Vandaag (kg)" required>
+          <button type="submit" class="m-btn-primary">Opslaan</button>
+        </form>
+        <canvas id="bwCanvas" height="160" class="hidden"></canvas>
+        <p class="m-empty" id="bwEmpty"></p>
+        <button type="button" id="bwDeleteLast" class="m-btn-ghost hidden">Laatste meting verwijderen</button>
+      </section>
+
+      <section class="m-card">
+        <div class="m-card-row">
+          <span class="m-card-title">Trainingshistorie</span>
+          <span class="m-card-sub" id="historyCount"></span>
+        </div>
+        <div id="historyList" class="m-history"></div>
+        <p class="m-empty hidden" id="historyEmpty">Nog geen trainingen gelogd.</p>
+        <button type="button" id="historyMore" class="m-btn-ghost hidden">Toon meer</button>
+      </section>
     </section>
 
     <!-- ===== RECORDS ===== -->
@@ -193,9 +238,35 @@
 
     <!-- ===== SYNC ===== -->
     <section id="tab-settings" class="tab-panel">
-      <header class="m-screen-header"><h1>Sync</h1></header>
+      <header class="m-screen-header"><h1>Meer</h1></header>
 
       <section class="m-card">
+        <div class="m-card-row"><span class="m-card-title">Rusttimer</span></div>
+        <label class="m-field-label" for="restSelect">Start automatisch na elke gelogde set</label>
+        <select id="restSelect" class="m-select">
+          <option value="0">Uit</option>
+          <option value="60">1:00</option>
+          <option value="90">1:30</option>
+          <option value="120">2:00</option>
+          <option value="150">2:30</option>
+          <option value="180">3:00</option>
+          <option value="240">4:00</option>
+        </select>
+      </section>
+
+      <section class="m-card">
+        <div class="m-card-row"><span class="m-card-title">Back-up</span></div>
+        <p class="m-card-sub">Je trainingen staan alleen in deze browser. Bewaar een back-upbestand, of zet er een terug op een ander apparaat. Importeren voegt samen en overschrijft niets.</p>
+        <div class="m-btn-row">
+          <button type="button" id="exportBtn" class="m-btn-primary">Exporteren</button>
+          <button type="button" id="importBtn" class="m-btn-secondary">Importeren</button>
+        </div>
+        <input type="file" id="importFile" accept="application/json,.json" class="sr-only" tabindex="-1" aria-label="Back-upbestand kiezen">
+        <p class="m-card-sub" id="backupStatus" role="status"></p>
+      </section>
+
+      <section class="m-card">
+        <div class="m-card-row"><span class="m-card-title">Google Sheets sync</span></div>
         <div class="m-sync-status-row">
           <span class="m-sync-dot" id="syncDot"></span>
           <span id="syncStatusText" class="m-card-title"></span>
@@ -242,20 +313,64 @@
       Records
     </button>
     <button class="m-nav-item" data-tab="settings">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 12a8 8 0 0 1 14-5M20 12a8 8 0 0 1-14 5M18 3v4h-4M6 21v-4h4"></path></svg>
-      Sync
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 12h2M10 12h10M4 17h8M16 17h4"></path><circle cx="16" cy="7" r="2"></circle><circle cx="8" cy="12" r="2"></circle><circle cx="14" cy="17" r="2"></circle></svg>
+      Meer
     </button>
   </nav>
 
+  <!-- Rusttimer: zweeft boven de onderbalk zolang hij loopt -->
+  <div id="restBar" class="m-rest hidden" role="timer" aria-label="Rusttimer">
+    <span class="m-rest-label" id="restLabel">Rust</span>
+    <span class="m-rest-time" id="restTime">0:00</span>
+    <button type="button" class="m-rest-btn" id="restMinus" aria-label="15 seconden minder">−15</button>
+    <button type="button" class="m-rest-btn" id="restPlus" aria-label="15 seconden meer">+15</button>
+    <button type="button" class="m-rest-btn" id="restStop" aria-label="Rusttimer stoppen">Stop</button>
+    <span class="m-rest-progress" id="restProgress"></span>
+  </div>
+
+  <div id="prToast" class="m-pr-toast hidden" role="status" aria-live="polite">
+    <span class="m-pr-toast-label">Nieuw record</span>
+    <span class="m-pr-toast-kg" id="prToastKg"></span>
+    <span class="m-pr-toast-ex" id="prToastEx"></span>
+  </div>
+
+  <dialog id="setDialog" class="m-dialog" aria-labelledby="setDialogTitle">
+    <form method="dialog" id="setDialogForm">
+      <h2 class="m-dialog-title" id="setDialogTitle"></h2>
+      <p class="m-card-sub" id="setDialogMeta"></p>
+      <div class="m-input-row">
+        <div class="m-field">
+          <label for="editWeight">Gewicht (kg)</label>
+          <input id="editWeight" type="number" step="0.25" min="0" inputmode="decimal">
+        </div>
+        <div class="m-field">
+          <label for="editReps">Reps</label>
+          <input id="editReps" type="number" step="1" min="1" inputmode="numeric">
+        </div>
+      </div>
+      <div class="m-toggle-row">
+        <label class="m-toggle"><input type="radio" name="editType" value="warmup"> Warmup</label>
+        <label class="m-toggle"><input type="radio" name="editType" value="working"> Working</label>
+      </div>
+      <p class="m-dialog-note" id="setDialogNote"></p>
+      <div class="m-btn-row">
+        <button type="button" id="setDialogSave" class="m-btn-primary">Opslaan</button>
+        <button type="button" id="setDialogDelete" class="m-btn-secondary">Verwijderen</button>
+      </div>
+      <button type="button" id="setDialogCancel" class="m-btn-ghost">Annuleren</button>
+    </form>
+  </dialog>
+
 </div>
 
-<script src="js/icons.js?v=20261110"></script>
-<script src="js/exercises-db.js?v=20261110"></script>
-<script src="js/storage.js?v=20261110"></script>
-<script src="js/sheets-sync.js?v=20261110"></script>
-<script src="js/charts.js?v=20261110"></script>
-<script src="js/barbell.js?v=20261110"></script>
-<script src="js/app.js?v=20261110"></script>
+<script src="js/icons.js?v=20261110b"></script>
+<script src="js/exercises-db.js?v=20261110b"></script>
+<script src="js/storage.js?v=20261110b"></script>
+<script src="js/sheets-sync.js?v=20261110b"></script>
+<script src="js/charts.js?v=20261110b"></script>
+<script src="js/barbell.js?v=20261110b"></script>
+<script src="js/body-diagram.js?v=20261110b"></script>
+<script src="js/app.js?v=20261110b"></script>
 <script>
 document.getElementById('originHint').textContent = window.location.origin;
 document.getElementById('redirectHint').textContent = window.location.origin + window.location.pathname;

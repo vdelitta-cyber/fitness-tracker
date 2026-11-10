@@ -20,8 +20,23 @@ Online: https://vdelitta-cyber.github.io/fitness-tracker/
   trainingsdagen, met maximaal 2 rustdagen ertussen.
 - **Intensiteit**: het working volume van vandaag t.o.v. het gemiddelde van je
   laatste 4 sessies van hetzelfde dagtype, op een schaal van 1 tot 10.
-- **Tabs**: Vandaag, Analyse (progressie per oefening, weekvolume, consistency van
-  de laatste 5 weken), Records en Sync.
+- **Vooraf ingevuld**: bij het kiezen van een oefening staan gewicht en reps van je
+  laatste set al ingevuld, met knoppen voor ±2,5 kg en ±1 rep en een suggestie op
+  basis van de vorige sessie.
+- **Set corrigeren**: tik op een gelogde set (vandaag of in de historie) om hem te
+  wijzigen of te verwijderen. Een rij die al in de Google Sheet staat, wordt daar
+  niet aangepast.
+- **Rusttimer**: start na elke gelogde set (standaard 2:00, instelbaar of uit te
+  zetten onder Meer). Aan het eind trilt en piept het apparaat waar de browser dat
+  toestaat; op iPhone is er geen trilling.
+- **Nieuw record**: een melding zodra een werkset zwaarder is dan je beste ooit.
+- **Spierkaart**: de spiergroepen die je deze week trainde lichten op, helderder bij
+  meer volume.
+- **Tabs**: Vandaag, Analyse (deze week tegenover vorige week, progressie met
+  geschatte 1RM volgens Epley, weekvolume, consistency van de laatste 5 weken,
+  lichaamsgewicht en trainingshistorie), Records en Meer (rusttimer, back-up, sync).
+- **Back-up**: onder Meer exporteer je alles naar één JSON-bestand en importeer je
+  het op een ander apparaat. Importeren voegt samen en overschrijft niets.
 
 ## Starten
 
@@ -85,7 +100,7 @@ meestal binnen een paar minuten. Zie je daarna nog de oude versie, sluit Safari 
 helemaal af en open de app opnieuw.
 
 GitHub Pages laat bestanden tot 10 minuten cachen. Daarom verwijzen `index.html` naar
-alle CSS- en JS-bestanden met een versienummer (`?v=20261110`). Verander je een van die
+alle CSS- en JS-bestanden met een versienummer (`?v=20261110b`). Verander je een van die
 bestanden, verhoog dan het nummer overal in `index.html` (bijvoorbeeld naar de datum
 van die dag), zodat een browser nooit een nieuwe `index.html` met oude scripts of
 stijlen mengt.
