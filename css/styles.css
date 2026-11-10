@@ -594,3 +594,183 @@ main { padding: 0; }
 .m-split { font-size: clamp(52px, calc((min(100vw, 430px) - 40px) / 4.75), 104px); white-space: nowrap; }
 .m-topset-load { flex-wrap: wrap; }
 .m-topset-kg { font-size: clamp(52px, 17vw, 72px); }
+
+
+/* ===== Aanvullingen: corrigeren, rusttimer, suggestie, spierkaart, historie, lichaamsgewicht ===== */
+#app { padding-bottom: calc(170px + env(safe-area-inset-bottom, 0px)); }
+
+/* Sets zijn aantikbaar om ze te wijzigen of te verwijderen */
+button.set-pill { border: 0; font-family: inherit; cursor: pointer; min-height: 32px; }
+button.set-pill.warmup { border: 1px dashed var(--border-dashed); }
+button.set-pill:active { opacity: 0.7; }
+
+/* Invoer: velden onder elkaar met stapknoppen */
+#setForm { display: flex; flex-direction: column; gap: 10px; }
+.m-stepper { display: flex; gap: 6px; }
+.m-stepper input { flex: 1; min-width: 0; text-align: center; }
+.m-step {
+  flex: 0 0 64px;
+  height: 52px;
+  background: transparent;
+  border: 1px solid var(--border-dashed);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.m-step:active { background: var(--bg-chip); }
+.m-suggest {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-legend);
+  background: var(--bg-chip);
+  border-left: 2px solid var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Spierkaart */
+.m-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; padding-top: 4px; }
+.m-body-fig { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.m-body-svg { width: 100%; max-width: 120px; height: auto; display: block; }
+.m-body-svg rect { fill: #161616; stroke: #2e2e2e; stroke-width: 0.6; }
+.m-body-svg rect.on { fill: var(--text); stroke: var(--text); }
+.m-body-fig figcaption { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-secondary); }
+
+/* Rusttimer boven de onderbalk */
+.m-rest {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  width: 100%;
+  max-width: 430px;
+  height: 56px;
+  padding: 0 12px 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--text);
+  z-index: 39;
+}
+.m-rest-label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-secondary); }
+.m-rest-time { flex: 1; font-size: 26px; font-weight: 900; font-stretch: 125%; font-variant-numeric: tabular-nums; }
+.m-rest-btn {
+  min-width: 48px;
+  height: 40px;
+  padding: 0 8px;
+  background: transparent;
+  border: 1px solid var(--border-dashed);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.m-rest-progress { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: var(--text); transition: width 0.25s linear; }
+.m-rest.done { background: var(--text); color: var(--bg); }
+.m-rest.done .m-rest-label { color: var(--bg); }
+.m-rest.done .m-rest-btn { border-color: var(--bg); color: var(--bg); }
+.m-rest.done #restMinus, .m-rest.done #restPlus { display: none; }
+
+/* Nieuw record */
+.m-pr-toast {
+  position: fixed;
+  left: 50%;
+  top: calc(20px + env(safe-area-inset-top, 0px));
+  transform: translateX(-50%);
+  width: calc(100% - 40px);
+  max-width: 390px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--text);
+  color: var(--bg);
+  z-index: 60;
+  pointer-events: none;
+}
+.m-pr-toast.show { animation: prIn 3.2s cubic-bezier(0.2, 0.9, 0.2, 1) both; }
+.m-pr-toast-label { font-size: 11px; font-weight: 900; font-stretch: 125%; text-transform: uppercase; letter-spacing: 0.1em; }
+.m-pr-toast-kg { font-size: 44px; line-height: 1; font-weight: 900; font-stretch: 125%; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.m-pr-toast-ex { font-size: 13px; font-weight: 700; }
+@keyframes prIn {
+  0% { opacity: 0; transform: translate(-50%, -24px) scale(0.96); }
+  10%, 88% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -12px) scale(1); }
+}
+
+/* Venster: set wijzigen */
+.m-dialog {
+  width: calc(100% - 32px);
+  max-width: 380px;
+  padding: 20px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  border: 1px solid var(--text);
+  border-radius: var(--radius);
+}
+.m-dialog::backdrop { background: rgba(0, 0, 0, 0.75); }
+.m-dialog form { display: flex; flex-direction: column; gap: 12px; }
+.m-dialog-title { margin: 0; font-size: 18px; font-weight: 900; font-stretch: 125%; text-transform: uppercase; letter-spacing: -0.01em; }
+.m-dialog .m-card-sub { margin: 0; }
+.m-dialog-note { margin: 0; font-size: 12px; line-height: 1.4; color: var(--text-secondary); }
+.m-dialog-note:empty { display: none; }
+.m-dialog .m-btn-row { margin-bottom: 0; }
+.m-btn-ghost {
+  width: 100%;
+  min-height: 44px;
+  background: transparent;
+  border: 0;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+/* Analyse: weekvergelijking, lichaamsgewicht, historie */
+.stat-delta { display: block; margin-top: 4px; font-size: 11px; font-weight: 700; color: var(--text-legend); font-variant-numeric: tabular-nums; }
+button.m-consistency-box { border: 0; padding: 0; cursor: pointer; font-family: inherit; }
+button.m-consistency-box:active { opacity: 0.7; }
+.m-inline-form { display: flex; gap: 8px; }
+.m-inline-form .m-text-input { flex: 1; min-width: 0; margin-bottom: 0; font-size: 16px; }
+.m-inline-form .m-btn-primary { flex: 0 0 auto; padding: 0 16px; }
+
+.m-history { display: flex; flex-direction: column; }
+.m-history:empty { display: none; }
+.m-session { border-bottom: 1px solid var(--border); }
+.m-session:last-child { border-bottom: 0; }
+.m-session summary {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 10px;
+  align-items: baseline;
+  min-height: 52px;
+  padding: 10px 0;
+  cursor: pointer;
+  list-style: none;
+}
+.m-session summary::-webkit-details-marker { display: none; }
+.m-session-date { font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.02em; }
+.m-session-type { font-size: 12px; font-weight: 700; color: var(--text-legend); text-align: right; }
+.m-session-meta { grid-column: 1 / -1; font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.m-session[open] summary .m-session-date::after { content: ' −'; color: var(--text-secondary); }
+.m-session:not([open]) summary .m-session-date::after { content: ' +'; color: var(--text-secondary); }
+.m-session-body { display: flex; flex-direction: column; gap: 12px; padding: 4px 0 16px; }
+.m-history-ex { display: flex; flex-direction: column; gap: 6px; }
+.m-history-ex-name { font-size: 13px; font-weight: 700; }
+
+.m-select { font-family: inherit; }
+#backupStatus:empty { display: none; }
+.exercise-card-pr { white-space: nowrap; flex-shrink: 0; }
+.m-body-svg { max-width: 100px; }
