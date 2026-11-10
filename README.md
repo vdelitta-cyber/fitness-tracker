@@ -83,3 +83,9 @@ De site draait op GitHub Pages vanaf de `main`-branch. Na elke commit bouwt GitH
 Pages automatisch opnieuw (tabblad Actions, "pages build and deployment"); dat duurt
 meestal binnen een paar minuten. Zie je daarna nog de oude versie, sluit Safari dan
 helemaal af en open de app opnieuw.
+
+GitHub Pages laat bestanden tot 10 minuten cachen. Daarom verwijzen `index.html` naar
+alle CSS- en JS-bestanden met een versienummer (`?v=20261110`). Verander je een van die
+bestanden, verhoog dan het nummer overal in `index.html` (bijvoorbeeld naar de datum
+van die dag), zodat een browser nooit een nieuwe `index.html` met oude scripts of
+stijlen mengt.
